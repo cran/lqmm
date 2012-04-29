@@ -1,0 +1,183 @@
+\name{lqmm}
+\alias{lqmm}
+
+\title{Fitting Linear Quantile Mixed Models}
+
+\description{
+\code{lqmm} is used to fit linear quantile mixed models based on the asymmetric Laplace distribution.}
+
+\usage{
+lqmm(fixed, random, group, covariance = "pdDiag", iota = 0.5,
+	nK = 11, type = "normal", data = sys.frame(sys.parent()),
+	subset, weights, na.action = na.fail, control = list(),
+	contrasts = NULL, forceK = FALSE, fit = TRUE) 
+
+}
+\arguments{
+  \item{fixed}{
+an object of class \code{\link{formula}} for fixed effects: a symbolic description of the model to be fitted.
+}
+  \item{random}{
+a one-sided formula of the form \code{~x1 + x2 + ... + xn} for random effects: a symbolic description of the model to be fitted.
+}
+  \item{group}{
+grouping factor.
+}
+  \item{covariance}{
+variance--covariance matrix of the random effects. Default is \code{pdDiag} (see details).
+}
+  \item{iota}{
+the quantile(s) to be estimated.
+}
+  \item{nK}{
+number of quadrature knots.
+}
+  \item{type}{
+type of quadrature "c("normal","robust")" (see details).
+}
+  \item{data}{
+an optional data frame containing the variables named in
+   \code{fixed}, \code{random} and \code{group}. By default the variables are taken from the environment from which \code{lqmm} is called.
+}
+  \item{subset}{
+an optional vector specifying a subset of observations to be used in the fitting process.}
+
+  \item{weights}{
+an optional vector of weights to be used in the fitting process of the same length as the number of rows of \code{data}.
+}
+ \item{na.action}{a function that indicates what should happen when the
+   data contain \code{NA}s.  The default action (\code{na.fail}) causes
+   \code{lqmm} to print an error message and terminate if there are any
+   incomplete observations.}
+
+  \item{control}{
+  list of control parameters of the fitting process. See \code{\link{lqmmControl}}.
+}
+
+  \item{contrasts}{
+  not yet implemented.
+}
+
+  \item{forceK}{logical flag. If \code{TRUE} the number of quadrature knots if forced to be equal to \code{nK}. This option is used to bypass a control check that otherwise automatically sets \code{nK} to 7 in case \code{nK} > 7 and the number of random effects > 2 (in which case the algorithm slows down notably).
+}
+
+ \item{fit}{
+logical flag. If FALSE the function returns a list of arguments to be passed to \code{lqmm.fit}.
+}
+}
+
+
+\details{
+The function computes an estimate on the iota-th quantile function of the response, conditional on the covariates, as specified by the \code{formula} argument, and on random effects, as specified by the \code{random} argument. The quantile predictor is assumed to be linear. The function maximizes the (log)likelihood of the Laplace regression proposed by Geraci and Bottai (2007). The likelihood is numerically integrated via Gaussian quadrature techniques. The optimization algorithm is based on a Nelder-Mead algorithm (\code{control = list(method = "df")}) via \code{\link{optim}}. An alternative optimization algorithm is based on the gradient of the Laplace log--likelihood (\code{control = list(method = "gs")}) (Bottai, Orsini and Geraci, 2011). The scale parameter is optimized in a refinement step via \code{\link{optimize}}.
+
+Quadrature approaches include Gauss-Hermite (\code{"normal"}) and Gauss-Laguerre (\code{"robust"}) quadrature.
+
+Different standard classes of positive--definite matrices for the random effects can be specified: \code{pdSymm} general positive--definite matrix, with no additional structure; \code{pdDiag} diagonal; \code{pdIdent} multiple of an identity; \code{pdCompSymm} compound symmetry structure (constant diagonal and constant off--diagonal elements).
+}
+
+\value{
+\code{lqmm} returns an object of \code{\link{class}} \code{lqmm}.
+
+The function \code{summary} is used to obtain and print a summary of the results. The generic accessor functions \code{coefficients}, \code{predict} and \code{residuals} extract various useful features of the value returned by \code{lqmm}.
+
+An object of class \code{lqmm} is a list containing the following components:
+
+\item{theta}{a vector containing fixed regression coefficients and parameters of the variance--covariance matrix of the random effects. See \code{\link{cov.lqmm}} to extract the variance--covariance of the random effects from an "lqmm" object.}
+\item{theta_x,theta_z}{partition of \code{theta}: fixed regression coefficients (\code{theta_x}) and unique variance--covariance parameters (\code{theta_z}).}
+\item{scale}{the scale parameter.}
+\item{logLik}{the log--likelihood.}
+\item{opt}{details on optimization (see \code{\link{lqmm.fit.gs}} and \code{\link{lqmm.fit.df}}).}
+\item{call}{the matched call.}
+\item{nn}{column names of \code{mmf}.}
+\item{mm}{column names of \code{mmr}.}
+\item{nobs}{the number of observations.}
+\item{dim_theta}{the number of columns in \code{mmf} and \code{mmr}.}
+\item{dim_theta_z}{the length of theta_z.}
+\item{edf}{length of theta.}
+\item{rdf}{the number of residual degrees of freedom.}
+\item{df}{edf + 1 (scale parameter).}
+\item{iota}{the estimated quantile(s).}
+\item{mmf}{the model matrix -- fixed effects.}
+\item{mmr}{the model matrix -- random effects.}
+\item{y}{the model response.}
+\item{revOrder}{original order of observations (now ordered according to \code{group}).}
+\item{weights}{the likelihood weights used in the fitting process (a vector of 1's if \code{weights} is missing or \code{NULL}).}
+\item{group}{the grouping factor.}
+\item{ngroups}{the number of groups.}
+\item{QUAD}{the knots and weights of the quadrature.}
+\item{type}{the type of quadrature.}
+\item{InitialPar}{starting values for theta.}
+\item{control}{list of control parameters used for optimization (see \code{\link{lqmmControl}}).}
+\item{cov_name}{class of variance-covariance matrix for the random effects.}
+\item{mfArgs}{arguments for \code{\link{model.frame}} to return the full data frame.}
+}
+\references{
+Geraci M and Bottai M (2007). Quantile regression for longitudinal data using the asymmetric Laplace distribution. Biostatistics 8(1), 140--154.
+
+Bottai M, Orsini N and Geraci M (2011). A Gradient Search Maximization Algorithm for Laplace Likelihood. Unpublished manuscript.
+
+Geraci M and Bottai M (1 June 2011). Linear Quantile Mixed Models. Unpublished manuscript.
+}
+\author{
+Marco Geraci
+}
+
+\seealso{
+\code{\link{lqm}, \link{summary.lqmm}}
+}
+\examples{
+
+# Test example
+set.seed(123)
+
+M <- 50
+n <- 10
+test <- data.frame(x = runif(n*M,0,1), group = rep(1:M,each=n))
+test$y <- 10*test$x + rep(rnorm(M, 0, 2), each = n) + rchisq(n*M, 3)
+fit.lqmm <- lqmm(fixed = y ~ x, random = ~ 1, group = group,	
+	data = test, iota = 0.5, nK = 11, type = "normal")
+fit.lqmm
+
+#Call: lqmm(fixed = y ~ x, random = ~1, group = group, iota = 0.5, nK = 11, 
+#    type = "normal", data = test)
+#Quantile 0.5 
+#Fixed effects:
+#Intercept          x  
+#    3.529      9.201  
+#Random effects:
+#Intercept 
+#    3.312 
+#Residual scale parameter: 0.8692 (standard deviation 2.459)
+#Log-likelihood: -1178 
+#Number of observations: 500 
+#Number of groups: 50 
+
+
+## Orthodont data
+data(Orthodont)
+
+# Random intercept model
+fitOi.lqmm <- lqmm(distance ~ age, random = ~ 1, group = Subject,
+	iota = c(0.1,0.5,0.9), data = Orthodont)
+coef(fitOi.lqmm)
+
+# Random slope model
+fitOs.lqmm <- lqmm(distance ~ age, random = ~ age, group = Subject,
+	iota = c(0.1,0.5,0.9), cov = "pdDiag", data = Orthodont)
+
+# Extract estimates
+cov.lqmm(fitOs.lqmm)
+coef(fitOs.lqmm)
+raneff.lqmm(fitOs.lqmm)
+
+# AIC
+AIC(fitOi.lqmm)
+AIC(fitOs.lqmm)
+
+}
+% Add one or more standard keywords, see file 'KEYWORDS' in the
+% R documentation directory.
+\keyword{lqmm}
+\keyword{longitudinal data}
+\keyword{hierarchical data}
+\keyword{quantile regression}
