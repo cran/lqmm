@@ -1,12 +1,12 @@
-\name{cov.sel}
-\alias{covHandling}
+\name{quad}
 \alias{errorHandling}
 \alias{extractAll}
 \alias{loglik.s}
 \alias{loglik.t}
-\alias{quad}
 \alias{theta.z.dim}
-\alias{cov.sel}
+\alias{covHandling}
+\alias{createLaguerre}
+\alias{quad}
 
 \title{
 Accessory Functions
@@ -16,13 +16,27 @@ Undocumented functions
 }
 
 \usage{
-cov.sel(type)
+quad(q, k, type = c("normal","robust"), rule = 1)
 }
 
 \arguments{
+  \item{q}{
+...
+}
+
+  \item{k}{
+...
+}
+
   \item{type}{
 ...
 }
+
+  \item{rule}{
+...
+}
+
+
 }
 
 \author{

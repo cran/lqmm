@@ -37,6 +37,7 @@ an object of class \code{summary.lqmm}. The function \code{summary.lqmm} compute
 
 \item{Cov}{the covariance matrix obtained from the bootstrapped estimates (if \code{covariance = TRUE}).}
 \item{tTable}{a matrix with estimates, standard errors, etc.}
+\item{B}{the matrix of all bootstrapped parameters.}
 }
 
 \author{

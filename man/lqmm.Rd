@@ -8,9 +8,9 @@
 
 \usage{
 lqmm(fixed, random, group, covariance = "pdDiag", iota = 0.5,
-	nK = 11, type = "normal", data = sys.frame(sys.parent()),
+	nK = 11, type = "normal", rule = 4, data = sys.frame(sys.parent()),
 	subset, weights, na.action = na.fail, control = list(),
-	contrasts = NULL, forceK = FALSE, fit = TRUE) 
+	contrasts = NULL, forceRule = FALSE, fit = TRUE) 
 
 }
 \arguments{
@@ -35,6 +35,10 @@ number of quadrature knots.
   \item{type}{
 type of quadrature "c("normal","robust")" (see details).
 }
+  \item{rule}{
+quadrature rule (see details).
+}
+
   \item{data}{
 an optional data frame containing the variables named in
    \code{fixed}, \code{random} and \code{group}. By default the variables are taken from the environment from which \code{lqmm} is called.
@@ -58,7 +62,7 @@ an optional vector of weights to be used in the fitting process of the same leng
   not yet implemented.
 }
 
-  \item{forceK}{logical flag. If \code{TRUE} the number of quadrature knots if forced to be equal to \code{nK}. This option is used to bypass a control check that otherwise automatically sets \code{nK} to 7 in case \code{nK} > 7 and the number of random effects > 2 (in which case the algorithm slows down notably).
+  \item{forceRule}{logical flag. If \code{TRUE} and \code{rule = 1} the quadrature rule if forced to be equal to 1. This option is used to bypass a control check that otherwise automatically sets \code{rule = 2} (sparse grid) in case \code{nK} > 7 and the number of random effects > 2 (in which case the algorithm slows down notably).
 }
 
  \item{fit}{
@@ -70,7 +74,7 @@ logical flag. If FALSE the function returns a list of arguments to be passed to 
 \details{
 The function computes an estimate on the iota-th quantile function of the response, conditional on the covariates, as specified by the \code{formula} argument, and on random effects, as specified by the \code{random} argument. The quantile predictor is assumed to be linear. The function maximizes the (log)likelihood of the Laplace regression proposed by Geraci and Bottai (2007). The likelihood is numerically integrated via Gaussian quadrature techniques. The optimization algorithm is based on a Nelder-Mead algorithm (\code{control = list(method = "df")}) via \code{\link{optim}}. An alternative optimization algorithm is based on the gradient of the Laplace log--likelihood (\code{control = list(method = "gs")}) (Bottai, Orsini and Geraci, 2011). The scale parameter is optimized in a refinement step via \code{\link{optimize}}.
 
-Quadrature approaches include Gauss-Hermite (\code{"normal"}) and Gauss-Laguerre (\code{"robust"}) quadrature.
+Quadrature approaches include Gauss-Hermite (\code{type = "normal"}) and Gauss-Laguerre (\code{type = "robust"}) quadrature. The argument \code{rule} takes one of the following: 1 (product rule quadrature), 2 (sparse grid quadrature), 3 (nested quadrature rule - only for \code{type = "normal"}), 4 (quadrature rule with the smallest number of nodes between rules 1 or 2).
 
 Different standard classes of positive--definite matrices for the random effects can be specified: \code{pdSymm} general positive--definite matrix, with no additional structure; \code{pdDiag} diagonal; \code{pdIdent} multiple of an identity; \code{pdCompSymm} compound symmetry structure (constant diagonal and constant off--diagonal elements).
 }
@@ -104,19 +108,24 @@ An object of class \code{lqmm} is a list containing the following components:
 \item{weights}{the likelihood weights used in the fitting process (a vector of 1's if \code{weights} is missing or \code{NULL}).}
 \item{group}{the grouping factor.}
 \item{ngroups}{the number of groups.}
-\item{QUAD}{the knots and weights of the quadrature.}
+\item{QUAD}{quadrature nodes and weights.}
 \item{type}{the type of quadrature.}
+\item{rule}{quadrature rule.}
 \item{InitialPar}{starting values for theta.}
 \item{control}{list of control parameters used for optimization (see \code{\link{lqmmControl}}).}
 \item{cov_name}{class of variance-covariance matrix for the random effects.}
 \item{mfArgs}{arguments for \code{\link{model.frame}} to return the full data frame.}
 }
 \references{
-Geraci M and Bottai M (2007). Quantile regression for longitudinal data using the asymmetric Laplace distribution. Biostatistics 8(1), 140--154.
-
 Bottai M, Orsini N and Geraci M (2011). A Gradient Search Maximization Algorithm for Laplace Likelihood. Unpublished manuscript.
 
+Genz A, and Keister BD (1996). Fully symmetric interpolatory rules for multiple integrals over infinite regions with Gaussian weight. Journal of Computational and Applied Mathematics, 71(2), 299--309.
+
+Geraci M and Bottai M (2007). Quantile regression for longitudinal data using the asymmetric Laplace distribution. Biostatistics 8(1), 140--154.
+
 Geraci M and Bottai M (1 June 2011). Linear Quantile Mixed Models. Unpublished manuscript.
+
+Heiss F, and Winschel V (2008). Likelihood approximation by numerical integration on sparse grids. Journal of Econometrics, 144(1), 62--80.
 }
 \author{
 Marco Geraci

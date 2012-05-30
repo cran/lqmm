@@ -284,6 +284,8 @@ asOneFormula <- function(..., omit = c(".", "pi"))
     list(nodes = x, weights = w)
 }
 
+
+
 ##########################################################################################
 # lqm functions (independent data)
 
@@ -783,55 +785,126 @@ return(val)
 
 }
 
-##
+## Use `SparseGrid' version 0.8.1 (Jelmer Ypma)
 
-"quad" <- function(k, q, type = c("normal","robust")){
+"createLaguerre" <- function(rule, q, k)
+{
 
 odd <- (k %% 2) > 0
+QUAD <- NULL
 
-if(type == "normal")
-  {QUAD <- gauss.quad.prob(k, type);
-   if(odd) QUAD$nodes[floor(k/2)+1] = 0}
-   
-if(type == "robust")
-  {if(odd)
-    {QUAD <- gauss.quad((k - 1)/2, "laguerre");
-     QUAD$nodes <- c(-rev(QUAD$nodes),0,QUAD$nodes)
-     }
-   else
-    {QUAD <- gauss.quad(k/2, "laguerre");
-     QUAD$nodes <- c(-rev(QUAD$nodes),QUAD$nodes)
-     }
-  QUAD$weights <- dal(QUAD$nodes, mu = 0, sigma = 1, p = 0.5, log = FALSE)
-  }
+if(rule == "product"){
+	if(odd)
+		{QUAD <- gauss.quad(n = (k - 1)/2, kind = "laguerre");
+		QUAD$nodes <- c(-rev(QUAD$nodes),0,QUAD$nodes)}
+	else
+		{QUAD <- gauss.quad(n = k/2, kind = "laguerre");
+		QUAD$nodes <- c(-rev(QUAD$nodes),QUAD$nodes)}
+	QUAD$weights <- dal(QUAD$nodes, mu = 0, sigma = 1, p = 0.5, log = FALSE)
+	QUAD$nodes <- permutations(n = k, r = q, v = QUAD$nodes, set = FALSE, repeats.allowed = TRUE);
+	QUAD$weights <- apply(permutations(n = k, r = q, v = QUAD$weights, set = FALSE, repeats.allowed = TRUE), 1, prod)
+}	
 
-n <- permutations(n = k, r = q, v = QUAD$nodes, set = FALSE, repeats.allowed = TRUE)
-w <- apply(permutations(n = k, r = q, v = QUAD$weights, set = FALSE, repeats.allowed = TRUE), 1, prod)
+if(rule == "sparse"){
+	if(odd)
+		{QUAD <- createSparseGrid(function(k) gauss.quad(n = k, kind = "laguerre"), dimension = q, k = (k - 1)/2, sym = FALSE);
+		QUAD$nodes <- rbind(-QUAD$nodes,rep(0,q),QUAD$nodes);
+		QUAD$weights <- c(QUAD$weights,dal(rep(0,q), mu = 0, sigma = 1, p = 0.5, log = FALSE)^q,QUAD$weights)}
+	else
+		{QUAD <- createSparseGrid(function(k) gauss.quad(n = k, kind = "laguerre"), dimension = q, k = k/2, sym = FALSE);
+		QUAD$nodes <- rbind(-QUAD$nodes,QUAD$nodes);
+		QUAD$weights <- c(QUAD$weights,QUAD$weights)}
+}
 
-list(n = n, w = w)
+return(QUAD)
+
+}
+
+
+"quad" <- function(q, k, type = c("normal","robust"), rule = 1){
+
+if(!(rule %in% 1:4)) {warning(paste("Rule ", rule, " not recognised. Rule 4 used (see details in '?lqmm'", sep = "")); rule <- 4}
+
+if(rule == 1){
+
+	odd <- (k %% 2) > 0
+	if(type == "normal")
+		{QUAD <- gauss.quad.prob(k, type);
+		if(odd) QUAD$nodes[floor(k/2)+1] = 0; # ensure middle value is 0
+		QUAD$nodes <- permutations(n = k, r = q, v = QUAD$nodes, set = FALSE, repeats.allowed = TRUE);
+		QUAD$weights <- apply(permutations(n = k, r = q, v = QUAD$weights, set = FALSE, repeats.allowed = TRUE), 1, prod)
+	}
+	   
+	if(type == "robust")
+		QUAD <- createLaguerre(rule = "product", q = q, k = k)
+	
+} else if(rule == 2){
+
+	if(k > 25) stop("This rule is for k < 25 only")
+
+	if(type == "normal")
+		QUAD <- createSparseGrid(type = "GQN", dimension = q, k = k)
+	
+	if(type == "robust")
+		QUAD <- createLaguerre(rule = "sparse", q = q, k = k);
+	
+} else if(rule == 3){
+
+	if(k > 25) stop("This rule is for k < 25 only")
+	
+	QUAD <- createSparseGrid(type = "KPN", dimension = q, k = k)
+	
+	if(type == "robust")
+		warning("Nested rule for integral with Laguerre weights not implemented. Gaussian weights used")
+
+} else {
+
+	if(k > 25) stop("This rule is for k < 25 only")
+	rule <- 2
+	
+	if(type == "normal"){
+		QUAD <- createSparseGrid(type = "GQN", dimension = q, k = k);
+		if (length(QUAD$weights) > k^q) {
+			QUAD <- createProductRuleGrid(type = "GQN", dimension = q, k = k);
+			rule <- 1;
+		}
+	}
+
+	if(type == "robust"){
+		QUAD <- createLaguerre(rule = "sparse", q = q, k = k)
+		if (length(QUAD$weights) > k^q) {
+			QUAD <- createLaguerre(rule = "product", q = q, k = k);
+			rule <- 1;
+		}
+	}
+}
+
+attr(QUAD, "rule") <- rule
+attr(QUAD, "dimension") <- q
+attr(QUAD, "k") <- k
+
+return(QUAD)
 
 }
 
 ##
 
-"loglik.t" <- function(theta, sigma, x, y, z, weights, Tq, cov_type, V, W, iota, p, q, m, M, N, Kq, minn, maxn){
+"loglik.t" <- function(theta, sigma, x, y, z, weights, Tq, V, W, iota, p, q, m, M, N, Kq, minn, maxn){
 
 if(length(theta) != (p + m)) stop("Check length theta")
 
-ans = .C("ll_h_R", theta = as.double(theta), as.double(x), as.double(y), as.double(z), as.double(weights), as.double(Tq), as.integer(cov_type),
-		as.double(V), as.double(W),	as.double(sigma), as.single(iota), as.integer(p), as.integer(q), as.integer(m), as.integer(M),
+ans = .C("ll_h_R", theta = as.double(theta), as.double(x), as.double(y), as.double(z), as.double(weights), as.double(Tq), as.double(V), as.double(W),	as.double(sigma), as.single(iota), as.integer(p), as.integer(q), as.integer(m), as.integer(M),
 		as.integer(N), as.integer(Kq), as.integer(minn-1), as.integer(maxn), loglik = double(1), PACKAGE = "lqmm")
 
 ans$loglik
 }
 
 
-"loglik.s" <- function(sigma, theta, x, y, z, weights, Tq, cov_type, V, W, iota, p, q, m, M, N, Kq, minn, maxn){
+"loglik.s" <- function(sigma, theta, x, y, z, weights, Tq, V, W, iota, p, q, m, M, N, Kq, minn, maxn){
 
 if(length(theta) != (p + m)) stop("Check length theta")
 
-ans = .C("ll_h_R", theta = as.double(theta), as.double(x), as.double(y), as.double(z), as.double(weights), as.double(Tq), as.integer(cov_type),
-		as.double(V), as.double(W),	as.double(sigma), as.single(iota), as.integer(p), as.integer(q), as.integer(m), as.integer(M),
+ans = .C("ll_h_R", theta = as.double(theta), as.double(x), as.double(y), as.double(z), as.double(weights), as.double(Tq), as.double(V), as.double(W),	as.double(sigma), as.single(iota), as.integer(p), as.integer(q), as.integer(m), as.integer(M),
 		as.integer(N), as.integer(Kq), as.integer(minn-1), as.integer(maxn), loglik = double(1), PACKAGE = "lqmm")
 
 ans$loglik
@@ -849,7 +922,7 @@ W <- as.matrix(W)
 p <- ncol(x)
 q <- ncol(z)
 m <- theta.z.dim(cov_name, q)
-cov_type <- cov.sel(cov_name)
+#cov_type <- cov.sel(cov_name)
 Tq <- Tfun(n = q, type = cov_name)
 
 N <- nrow(x)
@@ -871,13 +944,13 @@ while(r < UP_max_iter){
 
 if(control$verbose) cat(paste("Upper loop = ", r + 1, "\n",sep=""))
 
-ans <- optim(par = theta_0, fn = loglik.t, sigma = sigma_0, x = x, y = y, z = z, weights = weights, Tq = Tq, cov_type = cov_type, V = V, W = W,	iota = iota, p = p, q = q, m = m, M = M, N = N, Kq = Kq, minn = minn, maxn = maxn, control = list(maxit = control$LP_max_iter, abstol = control$LP_tol_ll, trace = control$verbose))
+ans <- optim(par = theta_0, fn = loglik.t, sigma = sigma_0, x = x, y = y, z = z, weights = weights, Tq = Tq, V = V, W = W,	iota = iota, p = p, q = q, m = m, M = M, N = N, Kq = Kq, minn = minn, maxn = maxn, control = list(maxit = control$LP_max_iter, abstol = control$LP_tol_ll, trace = control$verbose))
 
-if(control$verbose) cat(paste("(", r+1, ")", " logLik = ", round(ans$value,3), "\n",sep =""))
+if(control$verbose) cat(paste("(", r+1, ")", " logLik = ", round(-ans$value,3), "\n",sep =""))
 
 theta_1 <- ans$par
 
-opt_s <- optimize(f = loglik.s, interval = c(.Machine$double.eps, 1e3*sigma_0), theta = theta_1, x = x, y = y, z = z, weights = weights, Tq = Tq, cov_type = cov_type, V = V, W = W, iota = iota, p = p, q = q, m = m, M = M, N = N, Kq = Kq, minn = minn, maxn = maxn)
+opt_s <- optimize(f = loglik.s, interval = c(.Machine$double.eps, 1e3*sigma_0), theta = theta_1, x = x, y = y, z = z, weights = weights, Tq = Tq, V = V, W = W, iota = iota, p = p, q = q, m = m, M = M, N = N, Kq = Kq, minn = minn, maxn = maxn)
 
 sigma_1 <- opt_s$minimum
 
@@ -919,7 +992,7 @@ W <- as.matrix(W)
 p <- ncol(x)
 q <- ncol(z)
 m <- theta.z.dim(cov_name, q)
-cov_type <- cov.sel(cov_name)
+#cov_type <- cov.sel(cov_name)
 Tq <- Tfun(n = q, type = cov_name)
 
 N <- nrow(x)
@@ -942,7 +1015,7 @@ while(r < UP_max_iter){
 
 if(control$verbose) cat(paste("Upper loop = ", r + 1, "\n",sep=""))
 
-ans <- .C("gradientSd_h", theta = as.double(theta_0), as.double(x), as.double(y), as.double(z), as.double(weights), as.double(Tq), as.integer(cov_type), as.double(V), as.double(W),
+ans <- .C("gradientSd_h", theta = as.double(theta_0), as.double(x), as.double(y), as.double(z), as.double(weights), as.double(Tq), as.double(V), as.double(W),
 		as.double(sigma_0), as.single(iota), as.integer(p), as.integer(q), as.integer(m), as.integer(M), as.integer(N),	as.integer(Kq), as.integer(minn-1),
 		as.integer(maxn), as.double(control$LP_step), as.double(control$beta), as.double(control$gamma), as.integer(control$reset_step),
 		as.double(control$LP_tol_ll), as.double(control$LP_tol_theta), as.integer(control$check_theta), as.integer(control$LP_max_iter),
@@ -950,7 +1023,7 @@ ans <- .C("gradientSd_h", theta = as.double(theta_0), as.double(x), as.double(y)
 
 theta_1 <- ans$theta
 
-opt_s <- optimize(f = loglik.s, interval = c(.Machine$double.eps, 10*sigma_0), theta = theta_1, x = x, y = y, z = z, weights = weights, Tq = Tq, cov_type = cov_type, V = V, W = W, iota = iota, p = p, q = q, m = m, M = M, N = N, Kq = Kq, minn = minn, maxn = maxn)
+opt_s <- optimize(f = loglik.s, interval = c(.Machine$double.eps, 10*sigma_0), theta = theta_1, x = x, y = y, z = z, weights = weights, Tq = Tq, V = V, W = W, iota = iota, p = p, q = q, m = m, M = M, N = N, Kq = Kq, minn = minn, maxn = maxn)
 
 sigma_1 <- opt_s$minimum
 
@@ -1000,7 +1073,7 @@ if(code == -2) warning(paste(txt, " did not start in: ", fn, ". Check max number
 
 }
 
-"lqmm" <- function(fixed, random, group, covariance = "pdDiag", iota = 0.5, nK = 11, type = "normal", data = sys.frame(sys.parent()), subset, weights, na.action = na.fail, control = list(), contrasts = NULL, forceK = FALSE, fit = TRUE)
+"lqmm" <- function(fixed, random, group, covariance = "pdDiag", iota = 0.5, nK = 11, type = "normal", rule = 4, data = sys.frame(sys.parent()), subset, weights, na.action = na.fail, control = list(), contrasts = NULL, forceRule = FALSE, fit = TRUE)
 {
  
 Call <- match.call()
@@ -1077,18 +1150,21 @@ dim_theta[1] <- ncol(mmf)
 dim_theta[2] <- ncol(mmr)
 dim_theta_z <- theta.z.dim(type = cov_name, n = dim_theta[2])
 
-## Check if quadrature is computationally heavy
-if(dim_theta[2] > 2 && nK > 7) {
-warning(paste("For current value of \"nK\" the total number of quadrature knots is ", nK^dim_theta[2], sep = ""))
-	if((!forceK)) {
-		warning("\"nK\" reduced to 7. \nSet argument \"forceK\" to TRUE to bypass this check.")
-		nKold <- nK
-		nK <- 7
+## Check if product rule quadrature is computationally heavy
+
+if(rule == 1){
+	if(dim_theta[2] > 2 && nK > 7) {
+	warning(paste("For current value of \"nK\" the total number of quadrature knots is ", nK^dim_theta[2], sep = ""))
+		if((!forceRule)) {
+			warning("\"rule\" set to 4 (see details in '?lqmm'). \nSet argument \"forceRule\" to TRUE to bypass this check (not recommended).")
+			ruleold <- rule
+			rule <- 4
+		}
 	}
 }
 
-## Quandrature nodes
-QUAD <- quad(nK, dim_theta[2], type)
+## Quandrature nodes and weights
+QUAD <- quad(q = dim_theta[2], k = nK, type = type, rule = rule)
 
 ## Control
 if(is.null(names(control))) control <- lqmmControl()
@@ -1119,7 +1195,7 @@ theta_x <- lmfit$coefficients
 theta_0 <- c(theta_x, theta_z)
 
 ## Create list with all necessary arguments
-FIT_ARGS <- list(theta_0 = theta_0, x = as.matrix(mmf), y = y, z = as.matrix(mmr), weights = weights, V = QUAD$n, W = QUAD$w, sigma_0 = sigma_0, iota = iota, group = grp, cov_name = cov_name, control = control)
+FIT_ARGS <- list(theta_0 = theta_0, x = as.matrix(mmf), y = y, z = as.matrix(mmr), weights = weights, V = QUAD$nodes, W = QUAD$weights, sigma_0 = sigma_0, iota = iota, group = grp, cov_name = cov_name, control = control)
 
 if(!fit) return(FIT_ARGS)
 
@@ -1188,23 +1264,27 @@ fit$group <- grp
 fit$ngroups <- ngroups
 fit$QUAD <- QUAD
 fit$type <- type
+fit$rule <- rule
 fit$InitialPar <- list(theta = theta_0, sigma = sigma_0)
 fit$control <- control
 fit$cov_name <- cov_name
-attr(fit$cov_name, "cov_type") <- cov.sel(cov_name)
+#attr(fit$cov_name, "cov_type") <- cov.sel(cov_name)
 fit$mfArgs <- mfArgs
 
 class(fit) <- "lqmm"
 fit
 }
 
-cov.sel <- function(type){
-	switch(type,
-		"pdIdent" = 0,
-		"pdDiag" = 1,
-		"pdCompSymm" = 2,
-		"pdSymm" = 3)
-}
+#unused from version 1.1
+#cov.sel <- function(type){
+#	val <- switch(type,
+#		"pdIdent" = 0,
+#		"pdDiag" = 1,
+#		"pdCompSymm" = 2,
+#		"pdSymm" = 3)
+#	if(is.null(val)) stop("Covariance type not recognised")
+#	return(val)
+#}
 
 theta.z.dim <- function(type, n){
 	switch(type,
@@ -1549,7 +1629,7 @@ coln <- c("Value", "Std. Error", "lower bound", "upper bound", "Pr(>|t|)")
 
 if(covariance) object$Cov <- Cov
 object$tTable <- ans
-
+object$B <- B
 class(object) <- "summary.lqmm"
 return(object)
 
@@ -1607,7 +1687,7 @@ control <- object$control
 control$verbose <- FALSE
 
 FIT_ARGS <- list(x = as.matrix(object$mmf), y = object$y, z = as.matrix(object$mmr), cov_name = object$cov_name,
-            V = object$QUAD$n, W = object$QUAD$w, group = group_all, control = control)
+            V = object$QUAD$nodes, W = object$QUAD$weights, group = group_all, control = control)
 
 if(nq == 1){
 
@@ -1623,6 +1703,12 @@ if(nq == 1){
     sel_unique <- group_unique%in%names(group_freq);
     w <- rep(0, ngroups); w[sel_unique] <- group_freq;
     FIT_ARGS$weights <- w;
+
+	#lmfit <- lm.wfit(x = as.matrix(object$mmf), y = object$y, w = rep(w, table(group_all)))
+	#theta_x <- lmfit$coefficients
+	#FIT_ARGS$theta_0 <- c(theta_x, rep(1,object$dim_theta_z))
+	#FIT_ARGS$sigma_0 <- invvarAL(mean(lmfit$residuals^2), 0.5)
+	
     test <- "try-error";
 
     while(test=="try-error"){
@@ -1641,7 +1727,10 @@ if(nq == 1){
     w <- rep(0, ngroups); w[sel_unique] <- group_freq;
     FIT_ARGS$weights <- w;
     for (j in 1:nq){
-      
+		#lmfit <- lm.wfit(x = as.matrix(object$mmf), y = object$y, w = rep(w, table(group_all)))
+		#theta_x <- lmfit$coefficients
+		#FIT_ARGS$theta_0 <- c(theta_x, rep(1,object$dim_theta_z))
+		#FIT_ARGS$sigma_0 <- invvarAL(mean(lmfit$residuals^2), 0.5)
 		FIT_ARGS$theta_0 <- object[[j]]$theta;  
 		FIT_ARGS$sigma_0 <- object[[j]]$scale;
 		FIT_ARGS$iota <- object$iota[j];

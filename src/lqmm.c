@@ -168,102 +168,26 @@ HIERARCHICAL DATA
 
 */
 
-double psi_mat(double *theta, int *Tq, int *p, int *q, int *m, int *cov_type, double *psi){
+double psiMat(double *theta, double *Tq, int *p, int *q, int *m, double *psi){
 
-/*
-cov_type
-0 pdIdent
-1 pdDiag
-2 pdCompSymm
-3 pdSymm
-*/
-
-	if(*cov_type == 0){
-	int j;
-		for (j = 0; j < (*m); j++){
-			psi[j] = theta[j + (*p)];
-		}
-	}
-
-	if(*cov_type == 1){
-	int j;
-		for (j = 0; j < (*m); j++){
-			psi[j] = theta[j + (*p)];
-		}
-	}
-
-	if(*cov_type == 2){
 	int i, j, qsq;
 	qsq = (*q) * (*q);
-		for (i = 0; i < qsq; i++){
-			psi[i] = 0;
-			for (j = 0; j < (*m); j++){
-				psi[i] += Tq[i + qsq * j] * theta[j + (*p)];
-				}
-		}
+
+	for (i = 0; i < qsq; i++){
+		psi[i] = 0.0;
+		for (j = 0; j < (*m); j++){
+			psi[i] += Tq[i + qsq * j] * theta[j + (*p)];
+			}
 	}
 	
-	if(*cov_type == 3){
-	int i, j, qsq;
-	qsq = (*q) * (*q);
-		for (i = 0; i < qsq; i++){
-			psi[i] = 0;
-			for (j = 0; j < (*m); j++){
-				psi[i] += Tq[i + qsq * j] * theta[j + (*p)];
-				}
-		}
-	}
-	
-return 0;
+return 0.0;
 }
 
 
-
-double pdIdent(double *z, double *V, double *psi, int *q, int *N, int *Kq, int k, int j){
-
-int l;
-double val = 0;
-
-	for (l = 0; l < (*q); l++){
-		val += V[(k) + (*Kq) * l] * z[(j) + (*N) * l] * psi[0];	
-	}
-
-	return val;
-
-}
-
-double pdDiag(double *z, double *V, double *psi, int *q, int *N, int *Kq, int k, int j){
-
-int l;
-double val = 0;
-
-	for (l = 0; l < (*q); l++){
-		val += V[(k) + (*Kq) * l] * z[(j) + (*N) * l] * psi[l];	
-	}
-
-return val;
-
-}
-
-double pdCompSymm(double *z, double *V, double *psi, int *q, int *N, int *Kq, int k, int j){
+double pdMat(double *z, double *V, double *psi, int *q, int *N, int *Kq, int k, int j){
 
 int STEPQ, l;
-double val = 0;
-
-	for (STEPQ = 0; STEPQ < (*q); STEPQ++){
-		for (l = 0; l < (*q); l++){
-			val += V[(k) + (*Kq) * STEPQ] * z[(j) + (*N) * l] * psi[l + (*q) * STEPQ];
-		}
-	}
-
-return val;
-
-}
-
-double pdSymm(double *z, double *V, double *psi, int *q, int *N, int *Kq, int k, int j){
-
-int STEPQ, l;
-double val = 0;
+double val = 0.0;
 
 	for (STEPQ = 0; STEPQ < (*q); STEPQ++){
 		for (l = 0; l < (*q); l++){
@@ -275,30 +199,6 @@ double val = 0;
 return val;
 
 }
-
-
-double lin_pred_ll(int *cov_type, double *z, double *V, double *psi, int *q, int *N, int *Kq, int k, int j){
-
-double val = 0;
-
-	if(*cov_type == 0){
-	val = pdIdent(z, V, psi, q, N, Kq, k, j);
-	}
-	if(*cov_type == 1){
-	val = pdDiag(z, V, psi, q, N, Kq, k, j);
-	}
-	if(*cov_type == 2){
-	val = pdCompSymm(z, V, psi, q, N, Kq, k, j);
-	}
-	if(*cov_type == 3){
-	val = pdSymm(z, V, psi, q, N, Kq, k, j);
-	}
-
-return val;
-
-}
-
-
 
 /*
 
@@ -308,7 +208,7 @@ HIERARCHICAL DATA
 
 */
 
-void ll_h_R(double theta[], double *x, double *y, double *z, double *weights, int *Tq, int *cov_type, double *V, double *W, double *sigma, float *quantile, int *p, int *q, int *m, int *M, int *N, int *Kq, int *start, int *end, double *loglik)
+void ll_h_R(double theta[], double *x, double *y, double *z, double *weights, double *Tq, double *V, double *W, double *sigma, float *quantile, int *p, int *q, int *m, int *M, int *N, int *Kq, int *start, int *end, double *loglik)
 {
 
 /*  Likelihood (objective) function for hierarchical data - type void to be called from within R
@@ -333,73 +233,67 @@ void ll_h_R(double theta[], double *x, double *y, double *z, double *weights, in
 
 */
 	
-	int i, k, j, ls, le, NN, KKq;
-	double _cons, resid, val, mvalk, MAXVALK, TMP_VAR, tmp_psi;
+	int i, k, j, ls, le, loc_N, loc_Kq;
+	double _cons, resid, val, mvalk, LOGC, TMP_VAR;
 	
 	_cons = log((*quantile) * (1-(*quantile)) / *sigma);
-	NN = *N;
-	KKq = *Kq;
+	loc_N = *N;
+	loc_Kq = *Kq;
+	loglik[0] = 0;
 	
-	int dim_psi = 1;
-		if((*cov_type == 0) || (*cov_type == 1)){
-			dim_psi = *m;
-		}
-		if((*cov_type == 1) || (*cov_type == 2)){
-			dim_psi = (*q)*(*q);
-		}
-	
-	double psi[dim_psi], w[NN], valk[KKq];
+	int dim_psi = dim_psi = (*q)*(*q);
+	double psi[dim_psi], w[loc_N], valk[loc_Kq];
 
+// Psi.sqroot = Tq*theta_z
+	
+	TMP_VAR = psiMat(theta, Tq, p, q, m, psi);
 		
 // y - X*theta_x
 	
-	for (i = 0; i < NN; i++){
+	for (i = 0; i < loc_N; i++){
 		w[i] = 0;
 		for (j = 0; j < *p; j++){
-			w[i] += x[i + NN*j]*theta[j];
+			w[i] += x[i + loc_N*j]*theta[j];
 			}
 		w[i] = y[i] - w[i];
 	}
 
-// Psi.sqroot = Tq*theta_z
-	
-	tmp_psi = psi_mat(theta, Tq, p, q, m, cov_type, psi);
-
 // Asym. Laplace Likelihood	for M clusters
-	
+
 	for (i = 0; i < *M; i++)
 	{
-	mvalk = 0;
-	MAXVALK = -1000000000;
-	ls = start[i];
-	le = end[i];
-		for (k = 0; k < KKq; k++)
-		{
-		val = 0;
-		//valk[k] = 0;
-			for (j = ls; j < le; j++)
+		if(weights[i] > 0){
+		mvalk = 0.0;
+		LOGC = -1000000000000.0;
+		ls = start[i];
+		le = end[i];
+			for (k = 0; k < loc_Kq; k++)
 			{
-				TMP_VAR = 0;
-				TMP_VAR = lin_pred_ll(cov_type, z, V, psi, q, N, Kq, k, j);
-				//Rprintf("TMP_VAR = %5.5f\n", TMP_VAR);
-				resid = w[j] - TMP_VAR;
-				val += _cons - (1 / (2 * (*sigma))) * (fabs(resid) + (2 * (*quantile) - 1) * resid);
-			}
-		//valk += exp(val + log(W[k]));
-		valk[k] = val + log(W[k]);
-		if(valk[k] > MAXVALK)	MAXVALK = valk[k];
-		}
+			val = 0.0;
+			//valk[k] = 0;
+				for (j = ls; j < le; j++)
+				{
+					TMP_VAR = 0.0;
+					TMP_VAR = pdMat(z, V, psi, q, N, Kq, k, j);
+					//Rprintf("TMP_VAR = %5.5f\n", TMP_VAR);
+					resid = w[j] - TMP_VAR;
+					val += _cons - (1 / (2 * (*sigma))) * (fabs(resid) + (2 * (*quantile) - 1) * resid);
+				}
 
-		for (k = 0; k < KKq; k++){
-			mvalk += exp(valk[k] - MAXVALK);
+			valk[k] = val + log(fabs(W[k]));
+			if(valk[k] > LOGC)	LOGC = valk[k]; // constant for OVERFLOW protection
+			}
+
+			for (k = 0; k < loc_Kq; k++){
+				mvalk += copysign(1, W[k]) * exp(valk[k] - LOGC);
+			}
+		if(mvalk > 0){loglik[0] += - weights[i] * (LOGC + log(mvalk));}
 		}
-	
-	loglik[0] += - weights[i] * (MAXVALK + log(mvalk));
 	}
 }
 
 
-double ll_h_d(double *theta, double *x, double *y, double *z, double *weights, int *Tq, int *cov_type, double *V, double *W, double *sigma, float *quantile, int *p, int *q, int *m, int *M, int *N, int *Kq, int *start, int *end, double *deriv, double *loglik)
+double ll_h_d(double *theta, double *x, double *y, double *z, double *weights, double *Tq, double *V, double *W, double *sigma, float *quantile, int *p, int *q, int *m, int *M, int *N, int *Kq, int *start, int *end, double *deriv, double *loglik)
 {
 
 /*  Likelihood (objective) function and gradient for hierarchical data
@@ -423,31 +317,29 @@ double ll_h_d(double *theta, double *x, double *y, double *z, double *weights, i
 	end = vector of indices (e.g., end[i] = end observations cluster i)
 */
 	
-	int i, k, j, l, ls, le, STEPQ, STEPM, NN, KKq, n, qsq;
-	double _cons, resid, val, mvalk, phi, TMP_VAR, tmp_psi, MAXVALK;
+	int i, k, j, l, ls, le, STEPQ, STEPM, loc_N, loc_Kq, n, qsq;
+	double _cons, resid, val, mvalk, phi, TMP_VAR, LOGC;
 	
 	_cons = log((*quantile) * (1-(*quantile)) / *sigma);
-	NN = *N;
-	KKq = *Kq;
+	loc_N = *N;
+	loc_Kq = *Kq;
 	n = *p + *m;
 	qsq = (*q)*(*q);
+	loglik[0] = 0;
 
-	int dim_psi = 1;
-	if((*cov_type == 0) || (*cov_type == 1)){
-		dim_psi = *m;
-	}
-	if((*cov_type == 1) || (*cov_type == 2)){
-		dim_psi = (*q)*(*q);
-	}
-	
-	double psi[dim_psi], w[NN], GRAD[n], DERIV[n], valk[KKq];
+	int dim_psi = (*q)*(*q);
+	double psi[dim_psi], w[loc_N], GRAD[n], DERIV[n], valk[loc_Kq];
 
 	for (l = 0; l < n; l ++){
-	 GRAD[l] = 0;
-	 DERIV[l] = 0;
-	 deriv[l] = 0;
+		GRAD[l] = 0;
+		DERIV[l] = 0;
+		deriv[l] = 0;
 	}
-        	
+
+// Psi.sqroot = Tq*theta_z
+	
+	TMP_VAR = psiMat(theta, Tq, p, q, m, psi);
+	
 // y - X*theta_x
 	
 	for (i = 0; i < (*N); i++){
@@ -457,80 +349,76 @@ double ll_h_d(double *theta, double *x, double *y, double *z, double *weights, i
 			}
 		w[i] = y[i] - w[i];
 	}
-
-// Psi.sqroot = Tq*theta_z
-	
-	tmp_psi = psi_mat(theta, Tq, p, q, m, cov_type, psi);
 	
 // Asym. Laplace Likelihood	for M clusters
 	
-	loglik[0] = 0;
-	//mvalk = 0;
 	for (i = 0; i < *M; i++)
 	{
-		mvalk = 0;
-		MAXVALK = -1000000000;
+		if(weights[i] > 0){
+		mvalk = 0.0;
+		LOGC = -1000000000000.0;
 		ls = start[i];
 		le = end[i];
-		for (k = 0; k < KKq; k++)
-		{
-		 val = 0;
-			for (j = ls; j < le; j++)
+			for (k = 0; k < loc_Kq; k++)
 			{
-				TMP_VAR = 0;
-				TMP_VAR = lin_pred_ll(cov_type, z, V, psi, q, N, Kq, k, j);
-				//Rprintf("TMP_VAR = %5.5f\n", TMP_VAR);
-				resid = w[j] - TMP_VAR;
+			 val = 0.0;
+				for (j = ls; j < le; j++)
+				{
+					TMP_VAR = 0.0;
+					TMP_VAR = pdMat(z, V, psi, q, N, Kq, k, j);
+					resid = w[j] - TMP_VAR;
 
-				phi = *quantile;
-				if (resid <= 0) phi = *quantile - 1;
-				val += _cons - (1 / (*sigma)) * resid * phi;
+					phi = *quantile/(*sigma);
+					if (resid < 0) phi = (*quantile - 1)/(*sigma);
+					val += _cons - resid * phi;
 
-				//calculate numerator derivative    
-				for (l = 0; l < *p; l++){
-				 GRAD[l] += x[j + (*N) * l]*phi;
-				}
- 				
-				for (STEPM = 0; STEPM < *m; STEPM++){
-					TMP_VAR = 0;
-					for (STEPQ = 0; STEPQ < *q; STEPQ++){
-						for (l = 0; l < *q; l++){
-							TMP_VAR += V[k + (*Kq)*STEPQ]*z[j + (*N) * l]*Tq[l + (*q) * STEPQ + STEPM * (qsq)];
-						}
+					//calculate numerator derivative    
+					for (l = 0; l < *p; l++){
+					 GRAD[l] += x[j + (*N) * l]*phi;
 					}
-					GRAD[STEPM + (*p)] += TMP_VAR*phi;
+					
+					for (STEPM = 0; STEPM < *m; STEPM++){
+						TMP_VAR = 0;
+						for (STEPQ = 0; STEPQ < *q; STEPQ++){
+							for (l = 0; l < *q; l++){
+								TMP_VAR += V[k + (*Kq)*STEPQ]*z[j + (*N) * l]*Tq[l + (*q) * STEPQ + STEPM * (qsq)];
+							}
+						}
+						GRAD[STEPM + (*p)] += TMP_VAR*phi;
+					}
+
+				} //j
+				valk[k] = val + log(fabs(W[k]));
+				if(valk[k] > LOGC)	LOGC = valk[k]; // constant for OVERFLOW protection
+
+				for (l = 0; l < n; l++) {
+					DERIV[l] += GRAD[l] * exp(valk[k]);
+					//Rprintf("DERIV = %5.12lf\n", DERIV[l]);
+					GRAD[l] = 0;
 				}
 
-			} //j
-			valk[k] = val + log(W[k]);
-
-			for (l = 0; l < n; l++) {
-				DERIV[l] += GRAD[l] * exp(valk[k])/(*sigma);
-				GRAD[l] = 0;
-			}
-
-			if(valk[k] > MAXVALK)	MAXVALK = valk[k];
-		} //k
+			} //k
   
-		for (k = 0; k < KKq; k++){
-			mvalk += exp(valk[k] - MAXVALK);
-		}
-
-
-		loglik[0] += - weights[i] * (MAXVALK + log(mvalk));
-
-		for (l = 0; l < n; l++) {
-			deriv[l] += - weights[i] * DERIV[l]/(mvalk*exp(MAXVALK));
-			DERIV[l] = 0;
-			//Rprintf(" logLik = %5.5f\n", deriv[l]);
-		}
-	
+			for (k = 0; k < loc_Kq; k++){
+				mvalk += copysign(1, W[k]) * exp(valk[k] - LOGC);
+			}
+			
+			//Rprintf("mvalk = %5.4lf\n", mvalk);
+			
+			if(mvalk > 0){
+				loglik[0] += - weights[i] * (LOGC + log(mvalk));
+				for (l = 0; l < n; l++) {
+					deriv[l] += - weights[i] * DERIV[l]/(mvalk*exp(LOGC));
+					DERIV[l] = 0;
+				}
+			}
+		} //end if
 	}//i
 return loglik[0];
 }
 
 
-void gradientSd_h(double theta[], double *x, double *y, double *z, double *weights, int *Tq, int *cov_type, double *V, double *W, double *sigma, float *quantile, int *p, int *q, int *m, int *M, int *N, int *Kq, int *start, int *end, double *STEP, double *beta, double *gamma, int *RESET_STEP, double *TOL_LL, double *TOL_THETA, int *CHECK_THETA, int *MAXIT, int *verbose, int CONVERGE[], double loglik[], double deriv[], double optimum[])
+void gradientSd_h(double theta[], double *x, double *y, double *z, double *weights, double *Tq, double *V, double *W, double *sigma, float *quantile, int *p, int *q, int *m, int *M, int *N, int *Kq, int *start, int *end, double *STEP, double *beta, double *gamma, int *RESET_STEP, double *TOL_LL, double *TOL_THETA, int *CHECK_THETA, int *MAXIT, int *verbose, int CONVERGE[], double loglik[], double deriv[], double optimum[])
 {
 
 /*
@@ -551,7 +439,7 @@ Optimization algorithm for quantile models with hierarchical data
 	check_theta = 0;
 
 	//initialize loglikelihood and gradient with theta_0
-	f_0 = ll_h_d(theta, x, y, z, weights, Tq, cov_type, V, W, sigma, quantile, p, q, m, M, N, Kq, start, end, deriv, loglik);
+	f_0 = ll_h_d(theta, x, y, z, weights, Tq, V, W, sigma, quantile, p, q, m, M, N, Kq, start, end, deriv, loglik);
 
 	for(j = 0; j < n; j++){
 		grad[j] = deriv[j];
@@ -568,10 +456,10 @@ Optimization algorithm for quantile models with hierarchical data
 		theta_tmp[j] = theta[j] - grad[j]*step;
 		}
 
-		f_1 = ll_h_d(theta_tmp, x, y, z, weights, Tq, cov_type, V, W, sigma, quantile, p, q, m, M, N, Kq, start, end, deriv, loglik);
+		f_1 = ll_h_d(theta_tmp, x, y, z, weights, Tq, V, W, sigma, quantile, p, q, m, M, N, Kq, start, end, deriv, loglik);
     
 		if(*verbose == 1) {
-			Rprintf("  (%i",iter+1); Rprintf(")"); Rprintf(" logLik = %5.5f\n", f_1);
+			Rprintf("  (%i",iter+1); Rprintf(")"); Rprintf(" logLik = %5.5f\n", -f_1);
 		}
 
 		if (f_1 > f_0) {

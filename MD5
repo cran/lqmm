@@ -1,7 +1,7 @@
 fe06497acaf4f45999925d348c2605f9 *COPYING
-b550dcccaa0f529aabfb54df799e0149 *DESCRIPTION
-0a6ff338dc573bda1d22900d0d2ff8ca *NAMESPACE
-2a5de2de64242616ba4538c8ce289a55 *R/lqmm.R
+92418856975ef31668c02b4613a16155 *DESCRIPTION
+7597371ac01c495e3167ce5863b62a79 *NAMESPACE
+5862904ced22e2b6a3af59f63052dd53 *R/lqmm.R
 dfb988e33aac10f31d1045ebad9f59a7 *data/Orthodont.rda
 881c8ca691cb6647cc01d9ba3fbccadb *data/labor.rda
 e63cf510fa42b5a921dd07209c73760e *man/AIC.lqm.Rd
@@ -16,7 +16,6 @@ c1a41cf6fdb917165c66d09df8999c86 *man/addnoise.Rd
 230fcb6e332009d58217b29bfea53414 *man/coef.lqm.Rd
 2dda5c7afc8ef18b66758d20940bf6e4 *man/coef.lqmm.Rd
 4e48defbe7315765d910379b6b51471f *man/cov.lqmm.Rd
-3bdc5e1e9de40a8bfe04fb8455073469 *man/cov.sel.Rd
 85d510923e5d6829c54af5a539b244de *man/dal.Rd
 b6540b4181d5a5cb68146db899bed413 *man/extractBoot.lqmm.Rd
 9ccdc94b8c02b239e24ed539a0c01c8c *man/gauss.quad.Rd
@@ -30,8 +29,8 @@ c749fa3b1697bf7a40b87518d053a3aa *man/lqm.counts.Rd
 f445d839230e296a1bec7b382ff9c134 *man/lqm.fit.gs.Rd
 e7702605760771b238043a7c97ad0755 *man/lqmControl.Rd
 91648b99a49729aae244caa1eec2b153 *man/lqmm-internal.Rd
-06722e50858760e531f887996f644562 *man/lqmm-package.Rd
-25bc99b372c008c5ec5fa2fa9f0fc074 *man/lqmm.Rd
+48bafdbb9b6b2abc0372e5407de6817d *man/lqmm-package.Rd
+41c15da267dd654c1a3747029c057f8b *man/lqmm.Rd
 50618f8e2887b2a95556c056c4dc2df5 *man/lqmm.fit.df.Rd
 dbee7ce1067d422f33aed56669bcc751 *man/lqmm.fit.gs.Rd
 eef17bb7fd71f9d86322beb7d50050f4 *man/lqmmControl.Rd
@@ -45,12 +44,13 @@ c1b0b29b0457edd1f265959b6cab133c *man/print.lqm.Rd
 e154353a8d3e26c0d9f0dc38e40b47b1 *man/print.lqmm.Rd
 aa27271f5c3b964451f81004d840a9fa *man/print.summary.lqm.Rd
 e945a2ceffd488e964aed6ec69cd5996 *man/print.summary.lqmm.Rd
+e35347d0f645711bab659278b84a3ffe *man/quad.Rd
 097c09fbfd896db2a63d13f1093bcd81 *man/raneff.lqmm.Rd
 2fd81fe884113aaa0d927a2782cf222d *man/residuals.lqm.Rd
 028531f295002a0dc81c923572b68c9a *man/residuals.lqmm.Rd
 75c16f44338f66222bb1ef17270f1499 *man/summary.boot.lqm.Rd
 7d9046560f8c9138956cfe5884724a10 *man/summary.boot.lqmm.Rd
 db8247c37bb76de22afba583106b9ae4 *man/summary.lqm.Rd
-eab36da533571b3af048d84dbe484e82 *man/summary.lqmm.Rd
+d9b874ae31ef5ee7caaad5249b67fd9f *man/summary.lqmm.Rd
 11f4af17985a27e22b7201ced3dbfbb4 *src/Makevars
-74f1db6dc1a4ce394a372598f961551a *src/lqmm.c
+f35e8926e406ef2422d2eda3446936cf *src/lqmm.c
