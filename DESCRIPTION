@@ -1,8 +1,8 @@
 Package: lqmm
 Type: Package
 Title: Linear Quantile Mixed Models
-Version: 1.01
-Date: 2012-05-30
+Version: 1.02
+Date: 2012-09-15
 Author: Marco Geraci
 Maintainer: Marco Geraci <m.geraci@ucl.ac.uk>
 Depends: R (>= 2.12.0), SparseGrid
@@ -11,6 +11,6 @@ Description: Fit quantile regression models for independent and
 License: GPL (>= 3)
 URL: http://CRAN.R-project.org/package=lqmm
 LazyLoad: yes
-Packaged: 2012-05-30 18:49:33 UTC; Marco Geraci
+Packaged: 2012-09-15 06:39:54 UTC; Marco Geraci
 Repository: CRAN
-Date/Publication: 2012-05-31 08:54:56
+Date/Publication: 2012-09-15 07:47:19

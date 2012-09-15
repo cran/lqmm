@@ -8,7 +8,7 @@ Bootstrapping Linear Quantile Models
 This function is used to obtain a bootstrap sample of a fitted LQM.
 }
 \usage{
-boot.lqm(object, R = 50, seed = round(runif(1, 1, 10000)), startQR = TRUE)
+boot.lqm(object, R = 50, seed = round(runif(1, 1, 10000)), startQR = FALSE)
 }
 
 \arguments{
@@ -22,7 +22,7 @@ number of bootstrap replications.
 optional random generator seed.
   }
   \item{startQR}{
-logical flag. If \code{TRUE} (default) the estimated parameters in \code{object} are used as starting values in \code{\link{lqm.fit.gs}} applied to bootstrap samples. Otherwise starting values are based on \code{\link{lm}}.}
+logical flag. If \code{TRUE} the estimated parameters in \code{object} are used as starting values in \code{\link{lqm.fit.gs}} applied to bootstrap samples. Otherwise starting values are based on \code{\link{lm}}.}
 }
 
 \value{

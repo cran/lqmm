@@ -313,7 +313,7 @@ list(theta = fit$theta, scale = fit$scale, logLik = fit$logLik, opt = OPTIMIZATI
 
 }
 
-"lqmControl" <- function(loop_tol_ll = 1e-6, loop_tol_theta = 1e-6, check_theta = FALSE, loop_step = NULL, beta = 0.5, gamma = 1, reset_step = FALSE, loop_max_iter = 500, verbose = FALSE)
+"lqmControl" <- function(loop_tol_ll = 1e-5, loop_tol_theta = 1e-5, check_theta = FALSE, loop_step = NULL, beta = 0.5, gamma = 1, reset_step = FALSE, loop_max_iter = 500, verbose = FALSE)
 {
 if(beta > 1 || beta < 0) stop("Beta must be a decreasing factor in (0,1)")
 if(gamma < 1) stop("Beta must be a nondecreasing factor >= 1")
@@ -462,7 +462,7 @@ return(ans)
 
 }
 
-"boot.lqm" <- function(object, R = 50, seed = round(runif(1, 1, 10000)), startQR = TRUE){
+"boot.lqm" <- function(object, R = 50, seed = round(runif(1, 1, 10000)), startQR = FALSE){
 
 set.seed(seed)
 iota <- object$iota
@@ -823,7 +823,7 @@ return(QUAD)
 
 "quad" <- function(q, k, type = c("normal","robust"), rule = 1){
 
-if(!(rule %in% 1:4)) {warning(paste("Rule ", rule, " not recognised. Rule 4 used (see details in '?lqmm'", sep = "")); rule <- 4}
+if(!(rule %in% 1:4)) {warning(paste("Rule ", rule, " not recognised. Rule 1 used (see details in '?lqmm'", sep = "")); rule <- 1}
 
 if(rule == 1){
 
@@ -1052,7 +1052,7 @@ list(theta = theta_1, scale = sigma_1, logLik = -ans$opt_val, opt = OPTIMIZATION
 
 ##
 
-lqmmControl <- function(method = "df", LP_tol_ll = 1e-6, LP_tol_theta = 1e-6, check_theta = FALSE, LP_step = NULL, beta = 0.5, gamma = 1, reset_step = FALSE, LP_max_iter = 500, UP_tol = 1e-5, UP_max_iter = 10, startQR = FALSE, verbose = FALSE){
+lqmmControl <- function(method = "df", LP_tol_ll = 1e-5, LP_tol_theta = 1e-5, check_theta = FALSE, LP_step = NULL, beta = 0.5, gamma = 1, reset_step = FALSE, LP_max_iter = 500, UP_tol = 1e-4, UP_max_iter = 20, startQR = FALSE, verbose = FALSE){
 
 if(beta > 1 || beta < 0) stop("Beta must be a decreasing factor in (0,1)")
 if(gamma < 1) stop("Beta must be a nondecreasing factor >= 1")
@@ -1073,7 +1073,7 @@ if(code == -2) warning(paste(txt, " did not start in: ", fn, ". Check max number
 
 }
 
-"lqmm" <- function(fixed, random, group, covariance = "pdDiag", iota = 0.5, nK = 11, type = "normal", rule = 4, data = sys.frame(sys.parent()), subset, weights, na.action = na.fail, control = list(), contrasts = NULL, forceRule = FALSE, fit = TRUE)
+"lqmm" <- function(fixed, random, group, covariance = "pdDiag", iota = 0.5, nK = 7, type = "normal", rule = 1, data = sys.frame(sys.parent()), subset, weights, na.action = na.fail, control = list(), contrasts = NULL, fit = TRUE)
 {
  
 Call <- match.call()
@@ -1153,13 +1153,8 @@ dim_theta_z <- theta.z.dim(type = cov_name, n = dim_theta[2])
 ## Check if product rule quadrature is computationally heavy
 
 if(rule == 1){
-	if(dim_theta[2] > 2 && nK > 7) {
+	if(dim_theta[2] > 4 && nK > 11) {
 	warning(paste("For current value of \"nK\" the total number of quadrature knots is ", nK^dim_theta[2], sep = ""))
-		if((!forceRule)) {
-			warning("\"rule\" set to 4 (see details in '?lqmm'). \nSet argument \"forceRule\" to TRUE to bypass this check (not recommended).")
-			ruleold <- rule
-			rule <- 4
-		}
 	}
 }
 
@@ -1669,7 +1664,9 @@ cat("AIC:\n")
 }
 
 
-boot.lqmm <- function(object, R = 50, seed = round(runif(1, 1, 10000))){
+boot.lqmm <- function(object, R = 50, seed = round(runif(1, 1, 10000)), startQR = FALSE){
+
+if(startQR) warning("Standard errors may be underestimated when 'startQR = TRUE'")
 
 set.seed(seed)
 iota <- object$iota
@@ -1679,9 +1676,10 @@ ngroups <- object$ngroups
 group_all <- object$group
 group_unique <- unique(group_all)
 obsS <- replicate(R, sample(group_unique, replace = TRUE))
+dim_theta_z <- object$dim_theta_z
 
-npars <- object$dim_theta[1] + object$dim_theta_z + 1
-dimn <- c(object$nn, paste("reStruct", 1:object$dim_theta_z, sep=""), "scale")
+npars <- object$dim_theta[1] + dim_theta_z + 1
+dimn <- c(object$nn, paste("reStruct", 1:dim_theta_z, sep=""), "scale")
 
 control <- object$control
 control$verbose <- FALSE
@@ -1691,7 +1689,7 @@ FIT_ARGS <- list(x = as.matrix(object$mmf), y = object$y, z = as.matrix(object$m
 
 if(nq == 1){
 
-  FIT_ARGS$theta_0 <- object$theta;  
+  FIT_ARGS$theta_0 <- object$theta;
   FIT_ARGS$sigma_0 <- object$scale;
   FIT_ARGS$iota <- object$iota;
 
@@ -1703,12 +1701,17 @@ if(nq == 1){
     sel_unique <- group_unique%in%names(group_freq);
     w <- rep(0, ngroups); w[sel_unique] <- group_freq;
     FIT_ARGS$weights <- w;
-
-	#lmfit <- lm.wfit(x = as.matrix(object$mmf), y = object$y, w = rep(w, table(group_all)))
-	#theta_x <- lmfit$coefficients
-	#FIT_ARGS$theta_0 <- c(theta_x, rep(1,object$dim_theta_z))
-	#FIT_ARGS$sigma_0 <- invvarAL(mean(lmfit$residuals^2), 0.5)
 	
+	if(!startQR){
+		lmfit <- lm.wfit(x = as.matrix(object$mmf), y = object$y, w = rep(w, table(group_all)))
+		theta_x <- lmfit$coefficients
+		theta_z <- if (object$type == "normal")
+			rep(1, dim_theta_z)
+				else rep(invvarAL(1, 0.5), dim_theta_z)
+		FIT_ARGS$theta_0 <- c(theta_x, theta_z)
+		FIT_ARGS$sigma_0 <- invvarAL(mean(lmfit$residuals^2), 0.5)
+	}
+
     test <- "try-error";
 
     while(test=="try-error"){
@@ -1721,18 +1724,26 @@ if(nq == 1){
 } else {
 
   bootmat <- array(NA, dim = c(R, npars, nq), dimnames = list(NULL, dimn, paste("iota = ", format(iota, digits = 4), sep ="")));
+
   for(i in 1:R){
     group_freq <- table(obsS[,i]);
     sel_unique <- group_unique%in%names(group_freq);
     w <- rep(0, ngroups); w[sel_unique] <- group_freq;
     FIT_ARGS$weights <- w;
     for (j in 1:nq){
-		#lmfit <- lm.wfit(x = as.matrix(object$mmf), y = object$y, w = rep(w, table(group_all)))
-		#theta_x <- lmfit$coefficients
-		#FIT_ARGS$theta_0 <- c(theta_x, rep(1,object$dim_theta_z))
-		#FIT_ARGS$sigma_0 <- invvarAL(mean(lmfit$residuals^2), 0.5)
-		FIT_ARGS$theta_0 <- object[[j]]$theta;  
-		FIT_ARGS$sigma_0 <- object[[j]]$scale;
+		
+		if(startQR){
+			FIT_ARGS$theta_0 <- object[[j]]$theta;  
+			FIT_ARGS$sigma_0 <- object[[j]]$scale
+		} else {
+			lmfit <- lm.wfit(x = as.matrix(object$mmf), y = object$y, w = rep(w, table(group_all)))
+			theta_x <- lmfit$coefficients
+			theta_z <- if(object$type == "normal")
+				rep(1, dim_theta_z) else rep(invvarAL(1, 0.5), dim_theta_z)
+			FIT_ARGS$theta_0 <- c(theta_x, theta_z)
+			FIT_ARGS$sigma_0 <- invvarAL(mean(lmfit$residuals^2), 0.5)
+		}
+
 		FIT_ARGS$iota <- object$iota[j];
 
 		if(control$method == "gs") fit <- try(do.call(lqmm.fit.gs, FIT_ARGS));
@@ -1860,7 +1871,7 @@ return(ans)
 
 dal <- function(x, mu = 0, sigma = 1, p = 0.5, log = FALSE) {
 
-ind <- ifelse(x <= mu, 1, 0)
+ind <- ifelse(x < mu, 1, 0)
 
 val <- p*(1-p)/sigma * exp(-(x - mu)/sigma * (p- ind))
 
@@ -1870,7 +1881,7 @@ if(log) log(val) else val
 
 pal <- function(x, mu = 0, sigma = 1, p = 0.5) {
 
-ifelse(x <= mu, p * exp( (1 - p) / sigma * (x - mu)),
+ifelse(x < mu, p * exp( (1 - p) / sigma * (x - mu)),
 
 1 - (1 -p) *exp(- p / sigma * (x - mu)))
 
@@ -1884,7 +1895,7 @@ x1 <- mu + sigma/(1-p) * log(u/p)
 
 x2 <- mu - sigma/p * log ((1-u) / (1-p))
 
-ifelse(x1 <= mu, x1, x2)
+ifelse(x1 < mu, x1, x2)
 
 }
 
@@ -1892,7 +1903,7 @@ qal <- function(x, mu = 0, sigma = 1, p = 0.5) {
 
 if(x > 1 | x < 0) stop("p must be in [0,1]")
 
-ifelse(x <= p, mu + (sigma/(1-p))*log(x/p),
+ifelse(x < p, mu + (sigma/(1-p))*log(x/p),
 
 mu - (sigma/p)*log((1-x)/(1-p)))
 

@@ -8,7 +8,7 @@ Control parameters for lqm estimation
 A list of parameters for controlling the fitting process.
 }
 \usage{
-lqmControl(loop_tol_ll = 1e-6, loop_tol_theta = 1e-6, check_theta = FALSE,
+lqmControl(loop_tol_ll = 1e-5, loop_tol_theta = 1e-5, check_theta = FALSE,
 	loop_step = NULL, beta = 0.5, gamma = 1, reset_step = FALSE,
 	loop_max_iter = 500, verbose = FALSE)
 }
