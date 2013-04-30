@@ -1,9 +1,9 @@
 /*
-Estimation of linear quantile models and linear quantile mixed models (ver 1.0)
+Estimation of linear quantile models and linear quantile mixed models (ver 1.03)
 
 Marco Geraci, University College London with contributions by Matteo Bottai, Karolinska Institutet
 
-This suite of routines is part of the R package lqmm. The optimization algorithm is described in "A gradient search maximization algorithm for Laplace likelihood" (Bottai, Orsini and Geraci, 2011). The models stem from the work by Geraci (Ph.D. Dissertation, University of Florence, 2005) and by Geraci and Bottai ("Quantile regression for longitudinal data using the asymmetric Laplace distribution", Biostatistics 8, 2007) in which the asymmetric Laplace likelihood is linked to the estimation of conditional quantiles of a response variable given covariates and subject-specific random intercepts. The estimation of its parameters entails unconstrained maximization of a concave and nondifferentiable function over the real space. The algorithm is based on the gradient of the log-likelihood that generates a finite sequence of parameter values along which the likelihood increases. Its application to quantile mixed models is described in "Linear quantile mixed models" (Geraci and Bottai, 2011, Unpublished manuscript).
+This suite of routines is part of the R package lqmm. The optimization algorithm is described in "A gradient search maximization algorithm for Laplace likelihood" (Bottai, Orsini and Geraci, 2013). The models stem from the work by Geraci (Ph.D. Dissertation, University of Florence, 2005), Geraci and Bottai ("Quantile regression for longitudinal data using the asymmetric Laplace distribution", Biostatistics 8, 2007) and Geraci and Bottai ("Linear quantile mixed models", Statistics and  Computing, 2013) in which the asymmetric Laplace likelihood is linked to the estimation of conditional quantiles of a response variable given covariates and cluster-specific random effects. The estimation of its parameters entails unconstrained maximization of a concave and nondifferentiable function over the real space. The algorithm is based on the gradient of the log-likelihood that generates a finite sequence of parameter values along which the likelihood increases. 
 */
 
 #include <Rinternals.h>

@@ -1,0 +1,43 @@
+Changes in lqmm
+
+=============================================
+
+Version 1.0 (April 29, 2012)
+
+- Package lqmm on CRAN
+
+=============================================
+
+Version 1.01 (May 30, 2012)
+
+- Added functions
+- Fixed bugs in ll_h_R and ll_h_d (lqmm.c)
+- Amended cov.sel (lqmm.R) and psi_mat (lqmm.c)
+
+=============================================
+
+Version 1.02 (September 15, 2012)
+
+- Changed lqmControl and lqmmControl parameters (less stringent convergence thresholds) (lqmm.R)
+- Changed quadrature default in lqmm (lqmm.R)
+- Changed to the function boot.lqmm (lqmm.R) which provides bootstrapped standard errors of the coefficients estimates. The starting values used in each bootstrap sample are by default those from a least squares fit (startQR = FALSE). In previous versions of the package, starting values were taken from the fitted object (startQR = TRUE) to speed up convergence in each bootstrap sample. However, this causes the standard errors to be under-estimated
+
+=============================================
+
+Version 1.03 (April 30, 2013)
+
+- Improved documentation
+- Changed default lqmmControl(method = "df") to lqmmControl(method = "gs") (lqmm.R)
+- References updated
+- Fixed bug in covHandling (lqmm.R)
+- Produce warning when likelihood ratio test is negative
+
+
+
+
+
+
+
+
+
+

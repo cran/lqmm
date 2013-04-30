@@ -13,7 +13,7 @@ A list of parameters for controlling the fitting process.
 
 
 \usage{
-lqmmControl(method = "df", LP_tol_ll = 1e-5, LP_tol_theta = 1e-5,
+lqmmControl(method = "gs", LP_tol_ll = 1e-5, LP_tol_theta = 1e-5,
 	check_theta = FALSE, LP_step = NULL, beta = 0.5, gamma = 1,
 	reset_step = FALSE, LP_max_iter = 500, UP_tol = 1e-4,
 	UP_max_iter = 20, startQR = FALSE, verbose = FALSE)
@@ -21,7 +21,7 @@ lqmmControl(method = "df", LP_tol_ll = 1e-5, LP_tol_theta = 1e-5,
 
 \arguments{
   \item{method}{
-character vector that specifies the estimation method: "gs" for gradient search and "df" for Nelder-Mead (default).
+character vector that specifies the estimation method: "gs" for gradient search (default) and "df" for Nelder-Mead.
 }
  
  \item{LP_tol_ll}{

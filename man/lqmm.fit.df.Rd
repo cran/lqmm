@@ -18,16 +18,16 @@ lqmm.fit.df(theta_0, x, y, z, weights, cov_name, V, W, sigma_0,
 starting values for the linear predictor.
 }
   \item{x}{
-the model matrix for fixed effects.
+the model matrix for fixed effects (see details).
 }
   \item{y}{
-the model response.
+the model response (see details).
 }
   \item{z}{
-the model matrix for random effects.
+the model matrix for random effects (see details).
 }
   \item{weights}{
-the weights used in the fitting process.
+the weights used in the fitting process (see details).
 }
 
   \item{cov_name}{
@@ -47,7 +47,7 @@ starting value for the scale parameter.
 the quantile(s) to be estimated.
 }
   \item{group}{
-the grouping factor.
+the grouping factor (see details).
 }
   \item{control}{
 list of control parameters used for optimization (see \code{\link{lqmmControl}}).
@@ -55,6 +55,8 @@ list of control parameters used for optimization (see \code{\link{lqmmControl}})
 }
 \details{
 In \code{\link{lqmm}}, see argument \code{fit} for generating a list of arguments to be called by this function; see argument \code{covariance} for alternative variance--covariance matrices.
+
+NOTE: the data should be ordered by \code{group} when passed to \code{lqmm.fit.df} (such ordering is performed by \code{\link{lqmm}}). 
 }
 
 \value{

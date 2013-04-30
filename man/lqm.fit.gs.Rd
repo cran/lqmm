@@ -5,7 +5,7 @@
 Quantile Regression Fitting by Gradient Search
 }
 \description{
-This function controls the arguments to be passed to routines written in C for LQM estimation. The optimization algorithm is based on the gradient of the Laplace log--likelihood (Bottai, Orsini and Geraci, 2011).
+This function controls the arguments to be passed to routines written in C for LQM estimation. The optimization algorithm is based on the gradient of the Laplace log--likelihood (Bottai, Orsini and Geraci, 2013).
 }
 \usage{
 lqm.fit.gs(theta, x, y, weights, iota, control)
@@ -42,12 +42,13 @@ An object of class \code{list} containing the following components:
 
 \item{theta}{a vector of coefficients.}
 \item{scale}{the scale parameter.}
+\item{gradient}{the gradient.}
 \item{logLik}{the log--likelihood.}
 \item{opt}{number of iterations when the estimation algorithm stopped.}.
 }
 
 \references{
-Bottai M, Orsini N and Geraci M (2011). A Gradient Search Maximization Algorithm for Laplace Likelihood. Unpublished manuscript.
+Bottai M, Orsini N and Geraci M (2013). A Gradient Search Maximization Algorithm for Laplace Likelihood. Unpublished manuscript.
 }
 \author{
 Marco Geraci
@@ -60,12 +61,11 @@ Marco Geraci
 }
 \examples{
 
-set.seed(12356)
-n <- 200
-p <- 1:3/4
+set.seed(123)
+n <- 500
 test <- data.frame(x = runif(n,0,1))
 test$y <- 30 + test$x + rnorm(n)
-lqm.ls <- lqm(y ~ x, data = test, iota = p, fit = FALSE)
+lqm.ls <- lqm(y ~ x, data = test, fit = FALSE)
 
 do.call("lqm.fit.gs", lqm.ls)
 }

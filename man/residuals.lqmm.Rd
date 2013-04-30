@@ -31,7 +31,7 @@ a matrix of residuals.
 }
 
 \references{
-Geraci M and Bottai M (1 June 2011). Linear Quantile Mixed Models. Unpublished manuscript.
+Geraci M and Bottai M (2013). Linear quantile mixed models. Statistics and Computing, doi: 10.1007/s11222-013-9381-9.
 }
 
 \author{

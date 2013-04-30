@@ -29,6 +29,10 @@ logical flag. If \code{TRUE} the estimated parameters in \code{object} are used 
 an object of class "boot.lqmm".
 }
 
+\references{
+Geraci M and Bottai M (2013). Linear quantile mixed models. Statistics and Computing, doi: 10.1007/s11222-013-9381-9.
+}
+
 \author{
 Marco Geraci
 }

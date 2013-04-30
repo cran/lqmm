@@ -47,7 +47,7 @@ an optional data frame containing the variables named in
 an optional vector specifying a subset of observations to be used in the fitting process.}
 
   \item{weights}{
-an optional vector of weights to be used in the fitting process of the same length as the number of rows of \code{data}.
+an optional vector of weights to be used in the fitting process of the same length as the number of rows of \code{data}. Weights are given to clusters, therefore units within the same cluster receive the same weight (see details).
 }
  \item{na.action}{a function that indicates what should happen when the
    data contain \code{NA}s.  The default action (\code{na.fail}) causes
@@ -69,23 +69,26 @@ logical flag. If FALSE the function returns a list of arguments to be passed to 
 
 
 \details{
-The function computes an estimate on the iota-th quantile function of the response, conditional on the covariates, as specified by the \code{formula} argument, and on random effects, as specified by the \code{random} argument. The quantile predictor is assumed to be linear. The function maximizes the (log)likelihood of the Laplace regression proposed by Geraci and Bottai (2007). The likelihood is numerically integrated via Gaussian quadrature techniques. The optimization algorithm is based on a Nelder-Mead algorithm (\code{control = list(method = "df")}) via \code{\link{optim}}. An alternative optimization algorithm is based on the gradient of the Laplace log--likelihood (\code{control = list(method = "gs")}) (Bottai, Orsini and Geraci, 2011). The scale parameter is optimized in a refinement step via \code{\link{optimize}}.
+The function computes an estimate on the iota-th quantile function of the response, conditional on the covariates, as specified by the \code{formula} argument, and on random effects, as specified by the \code{random} argument. The quantile predictor is assumed to be linear. The function maximizes the (log)likelihood of the Laplace regression proposed by Geraci and Bottai (2013). The likelihood is numerically integrated via Gaussian quadrature techniques. The optimization algorithm is based on the gradient of the Laplace log--likelihood (\code{control = list(method = "gs")}). An alternative optimization algorithm is based on a Nelder-Mead algorithm (\code{control = list(method = "df")}) via \code{\link{optim}}. The scale parameter is optimized in a refinement step via \code{\link{optimize}}.
 
 Quadrature approaches include Gauss-Hermite (\code{type = "normal"}) and Gauss-Laguerre (\code{type = "robust"}) quadrature. The argument \code{rule} takes one of the following: 1 (product rule quadrature), 2 (sparse grid quadrature), 3 (nested quadrature rule - only for \code{type = "normal"}), 4 (quadrature rule with the smallest number of nodes between rules 1 or 2). Rules 2 and 3 have not yet been tested extensively.
 
 Different standard classes of positive--definite matrices for the random effects can be specified: \code{pdSymm} general positive--definite matrix, with no additional structure; \code{pdDiag} diagonal; \code{pdIdent} multiple of an identity; \code{pdCompSymm} compound symmetry structure (constant diagonal and constant off--diagonal elements).
+
+Weights are given to clusters, therefore it is expected that these are constant within cluster. When the weights are specified in the main call, then the first value by \code{group} in the vector \code{weights} will be replicated for the same length of each group. Alternatively, different weights within the same cluster can be introduced with a direct call to \code{\link{lqmm.fit.gs} or \link{lqmm.fit.df}}.
 }
 
 \value{
 \code{lqmm} returns an object of \code{\link{class}} \code{lqmm}.
 
-The function \code{summary} is used to obtain and print a summary of the results. The generic accessor functions \code{coefficients}, \code{predict} and \code{residuals} extract various useful features of the value returned by \code{lqmm}.
+The function \code{summary} is used to obtain and print a summary of the results.
 
 An object of class \code{lqmm} is a list containing the following components:
 
 \item{theta}{a vector containing fixed regression coefficients and parameters of the variance--covariance matrix of the random effects. See \code{\link{cov.lqmm}} to extract the variance--covariance of the random effects from an "lqmm" object.}
 \item{theta_x,theta_z}{partition of \code{theta}: fixed regression coefficients (\code{theta_x}) and unique variance--covariance parameters (\code{theta_z}).}
 \item{scale}{the scale parameter.}
+\item{gradient}{the gradient (\code{control = list(method = "gs")}).}
 \item{logLik}{the log--likelihood.}
 \item{opt}{details on optimization (see \code{\link{lqmm.fit.gs}} and \code{\link{lqmm.fit.df}}).}
 \item{call}{the matched call.}
@@ -114,22 +117,25 @@ An object of class \code{lqmm} is a list containing the following components:
 \item{mfArgs}{arguments for \code{\link{model.frame}} to return the full data frame.}
 }
 \references{
-Bottai M, Orsini N and Geraci M (2011). A Gradient Search Maximization Algorithm for Laplace Likelihood. Unpublished manuscript.
-
 Genz A, and Keister BD (1996). Fully symmetric interpolatory rules for multiple integrals over infinite regions with Gaussian weight. Journal of Computational and Applied Mathematics, 71(2), 299--309.
 
 Geraci M and Bottai M (2007). Quantile regression for longitudinal data using the asymmetric Laplace distribution. Biostatistics 8(1), 140--154.
 
-Geraci M and Bottai M (1 June 2011). Linear quantile mixed models. Unpublished manuscript.
+Geraci M and Bottai M (2013). Linear quantile mixed models. Statistics and Computing, doi: 10.1007/s11222-013-9381-9.
 
 Heiss F, and Winschel V (2008). Likelihood approximation by numerical integration on sparse grids. Journal of Econometrics, 144(1), 62--80.
 }
+
 \author{
 Marco Geraci
 }
 
+\note{
+Updates/FAQ/news are published here \url{http://marcogeraci.wordpress.com/}. New versions are usually published here \url{https://r-forge.r-project.org/R/?group_id=1396} before going on CRAN.
+}
+
 \seealso{
-\code{\link{lqm}, \link{summary.lqmm}}
+\code{\link{lqm}, \link{summary.lqmm}, \link{coef.lqmm}, \link{cov.lqmm}, \link{predict.lqmm}, \link{residuals.lqmm}}
 }
 \examples{
 
@@ -149,11 +155,11 @@ fit.lqmm
 #Quantile 0.5 
 #Fixed effects:
 #Intercept          x  
-#    3.529      9.201  
+#    3.443      9.258  
 #Random effects:
 #Intercept 
-#    3.312 
-#Residual scale parameter: 0.8692 (standard deviation 2.459)
+#    3.426 
+#Residual scale parameter: 0.8697 (standard deviation 2.46)
 #Log-likelihood: -1178 
 #Number of observations: 500 
 #Number of groups: 50 
