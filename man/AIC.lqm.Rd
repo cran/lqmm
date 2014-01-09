@@ -36,4 +36,3 @@ Marco Geraci
 }
 
 \keyword{AIC}
-\keyword{lqm}

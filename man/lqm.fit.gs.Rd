@@ -8,7 +8,7 @@ Quantile Regression Fitting by Gradient Search
 This function controls the arguments to be passed to routines written in C for LQM estimation. The optimization algorithm is based on the gradient of the Laplace log--likelihood (Bottai, Orsini and Geraci, 2013).
 }
 \usage{
-lqm.fit.gs(theta, x, y, weights, iota, control)
+lqm.fit.gs(theta, x, y, weights, tau, control)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -24,7 +24,7 @@ the model response.
   \item{weights}{
 the weights used in the fitting process.
 }
-  \item{iota}{
+  \item{tau}{
 the quantile to be estimated.
 }
   \item{control}{

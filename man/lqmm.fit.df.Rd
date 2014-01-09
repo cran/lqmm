@@ -10,7 +10,7 @@ This function controls the arguments to be passed to \code{\link{optim}} and \co
 
 \usage{
 lqmm.fit.df(theta_0, x, y, z, weights, cov_name, V, W, sigma_0,	
-	iota, group, control)
+	tau, group, control)
 }
 
 \arguments{
@@ -43,7 +43,7 @@ weights of the quadrature.
   \item{sigma_0}{
 starting value for the scale parameter.
   }
-  \item{iota}{
+  \item{tau}{
 the quantile(s) to be estimated.
 }
   \item{group}{

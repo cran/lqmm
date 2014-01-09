@@ -40,4 +40,3 @@ Marco Geraci
 
 \keyword{summary}
 \keyword{bootstrap}
-\keyword{lqm}

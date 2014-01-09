@@ -7,7 +7,8 @@ This function is used to fit a quantile regression model when the response is a 
 }
 \usage{
 lqm.counts(formula, data, weights = NULL, offset = NULL, contrasts = NULL,
-	alpha = 0.5, M = 50, zeta = 1e-05, B = 0.999, cn = NULL)
+	tau = 0.5, M = 50, zeta = 1e-05, B = 0.999, cn = NULL, alpha = 0.05,
+	control = list())
 }
 
 \arguments{
@@ -28,7 +29,7 @@ an optional offset to be included in the model frame.
   \item{contrasts}{
 an optional list. See the \code{contrasts.arg} of \code{\link{model.matrix.default}}.
 }
-  \item{alpha}{
+  \item{tau}{
 quantile to be estimated.
 }
   \item{M}{
@@ -43,7 +44,14 @@ right boundary for uniform random noise U[0,B] to be added to the response varia
 }
 
  \item{cn}{
-small constant to be passed to \code{\link{F.lqm}} (see Reference).
+small constant to be passed to \code{\link{F.lqm}} (see References).
+}
+
+ \item{alpha}{
+significance level.
+}
+  \item{control}{
+list of control parameters of the fitting process. See \code{\link{lqmControl}}.
 }
 
 }
@@ -53,10 +61,21 @@ small constant to be passed to \code{\link{F.lqm}} (see Reference).
 \value{
 an object of class "list" containing the following components
 
-\item{estimate_log_scale}{regression quantile on the log--scale}
-\item{std.err}{standard error}
-\item{fitted}{predicted quantile}
-\item{effective}{number of dithered samples used for standard error estimation that gave an invertible D matrix (Machado and Santos Silva, 2005).}
+\item{tau}{the estimated quantile.}
+\item{theta}{regression quantile (on the log--scale).}
+\item{fitted}{predicted quantile (on the response scale).}
+\item{tTable}{coefficients, standard errors, etc.}
+\item{x}{the model matrix.}
+\item{y}{the model response.}
+\item{offset}{offset.}
+\item{nobs}{the number of observations.}
+\item{M}{specified number of dithered samples for standard error estimation.}
+\item{Mn}{actual number of dithered samples used for standard error estimation that gave an invertible D matrix (Machado and Santos Silva, 2005).}
+\item{term.labels}{names for theta.}
+\item{terms}{the terms object used.}
+\item{rdf}{the number of residual degrees of freedom.}
+\item{InitialPar}{starting values for theta.}
+\item{control}{list of control parameters used for optimization (see \code{\link{lqmControl}}).}
 }
 
 \references{
@@ -72,8 +91,8 @@ Marco Geraci
 
 n <- 100
 x <- runif(n)
-data <- data.frame(x = x, y = rpois(n, 2*x))
-lqm.counts(y ~ x, data = data, M = 20)
+test <- data.frame(x = x, y = rpois(n, 2*x))
+lqm.counts(y ~ x, data = test, M = 50)
 
 
 }

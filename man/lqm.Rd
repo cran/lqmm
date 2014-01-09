@@ -6,7 +6,7 @@
 \description{\code{lqm} is used to fit linear quantile models based on the asymmetric Laplace distribution.}
 
 \usage{
-lqm(formula, data, subset, na.action, weights = NULL, iota = 0.5,
+lqm(formula, data, subset, na.action, weights = NULL, tau = 0.5,
 	contrasts = NULL, control = list(), fit = TRUE)}
 
 
@@ -25,8 +25,8 @@ a function which indicates what should happen when the data contain NAs. The def
 }
   \item{weights}{An optional vector of weights to be used in the fitting process.}
   
-  \item{iota}{
-the quantile(s) to be estimated. This must be a number between 0 and 1, otherwise the execution is stopped. If more than one quantile is specified, rounding off to the 4th decimal must give non--duplicated values of \code{iota}, otherwise the execution is stopped.
+  \item{tau}{
+the quantile(s) to be estimated. This must be a number between 0 and 1, otherwise the execution is stopped. If more than one quantile is specified, rounding off to the 4th decimal must give non--duplicated values of \code{tau}, otherwise the execution is stopped.
 }
   \item{contrasts}{
 an optional list. See the contrasts.arg of \code{\link{model.matrix.default}}.}
@@ -39,7 +39,7 @@ logical flag. If \code{FALSE} the function returns a list of arguments to be pas
 }
 
 \details{
-The function computes an estimate on the iota-th quantile function of the response, conditional on the covariates, as specified by the formula argument. The quantile predictor is assumed to be linear. The function maximizes the (log)likelihood of a Laplace regression which is equivalent to the minimization of the weighted sum of absolute residuals (Koenker and Bassett, 1978). The optimization algorithm is based on the gradient of the Laplace log--likelihood (Bottai, Orsini and Geraci, 2013).
+The function computes an estimate on the tau-th quantile function of the response, conditional on the covariates, as specified by the formula argument. The quantile predictor is assumed to be linear. The function maximizes the (log)likelihood of a Laplace regression which is equivalent to the minimization of the weighted sum of absolute residuals (Koenker and Bassett, 1978). The optimization algorithm is based on the gradient of the Laplace log--likelihood (Bottai, Orsini and Geraci, 2013).
 }
 
 \value{
@@ -49,7 +49,7 @@ The function \code{summary} is used to obtain and print a summary of the results
 
 An object of class \code{lqm} is a list containing the following components:
 
-\item{theta}{a vector of coefficients. \code{theta} is a named matrix of coefficients when \code{iota} is a vector of values.}
+\item{theta}{a vector of coefficients. \code{theta} is a named matrix of coefficients when \code{tau} is a vector of values.}
 \item{scale}{the scale parameter.}
 \item{gradient}{the gradient.}
 \item{logLik}{the log--likelihood.}
@@ -60,7 +60,7 @@ An object of class \code{lqm} is a list containing the following components:
 \item{nobs}{the number of observations.}
 \item{edf,dim_theta}{the length of theta.}
 \item{rdf}{the number of residual degrees of freedom.}
-\item{iota}{the estimated quantile(s).}
+\item{tau}{the estimated quantile(s).}
 \item{x}{the model matrix.}
 \item{y}{the model response.}
 \item{weights}{the weights used in the fitting process (a vector of 1's if \code{weights} = NULL).}
@@ -91,10 +91,9 @@ n <- 500
 p <- 1:3/4
 test <- data.frame(x = runif(n,0,1))
 test$y <- 30 + test$x + rnorm(n)
-fit.lqm <- lqm(y ~ x, data = test, iota = p,
+fit.lqm <- lqm(y ~ x, data = test, tau = p,
 	control = list(verbose = FALSE, loop_tol = 0.001), fit = TRUE)
 fit.lqm
 }
 
 \keyword{quantile regression}
-\keyword{lqm}

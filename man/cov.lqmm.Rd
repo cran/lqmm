@@ -5,7 +5,7 @@
 Extract Variance-Covariance Matrix
 }
 \description{
-\code{cov.lqmm} extracts the variance-covariance matrix from a fitted \code{lqmm} object.
+\code{cov.lqmm} extracts the variance-covariance matrix of the random effects from a fitted \code{lqmm} object.
 }
 \usage{
 cov.lqmm(object, ...)
@@ -21,7 +21,7 @@ not used.
 }
 
 \details{
-This function returns the variance or the variance-covariance matrix of the random effects. It calls \code{covHandling} to manage the output of \code{\link{lqmm.fit.gs}} or \code{\link{lqmm.fit.df}}. A post-fitting approximation to the nearest positive (semi)definite matrix (Higham, 2002) is applied if necessary.
+This function returns the variance or the variance-covariance matrix of the random effects. It calls \code{\link{covHandling}} to manage the output of \code{\link{lqmm.fit.gs}} or \code{\link{lqmm.fit.df}}. A post-fitting approximation to the nearest positive (semi)definite matrix (Higham, 2002) is applied if necessary.
 }
 
 \references{
@@ -37,6 +37,5 @@ Marco Geraci
 \code{\link{coef.lqmm}}
 }
 
-\keyword{lqmm}
 \keyword{covariance}
 \keyword{coefficients}

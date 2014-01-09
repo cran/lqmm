@@ -1,22 +1,23 @@
 \name{residuals.lqm}
 \alias{residuals.lqm}
+\alias{residuals.lqm.counts}
 
 \title{
-Residuals from an \code{lqm} Object
+Residuals from an LQM Objects
 }
 
 \description{
-This function computes the residuals from a fitted \code{lqm} object.
+This function computes the residuals from a fitted linear quantile model.
 }
 
 \usage{
 \method{residuals}{lqm}(object, ...)
 }
 
-%- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{object}{
-an \code{lqm} object.}
+an \code{lqm} or \code{lqm.counts} object.
+}
 
   \item{\dots}{
 not used.
@@ -25,7 +26,7 @@ not used.
 
 
 \value{
-a matrix of residuals.
+a vector or matrix of residuals.
 }
 
 
@@ -35,8 +36,7 @@ Marco Geraci
 
 
 \seealso{
-\code{\link{lqm}}, \code{\link{predict.lqm}}, \code{\link{coef.lqm}}
+\code{\link{lqm}}, \code{\link{lqm.counts}}, \code{\link{predict.lqm}}, \code{\link{coef.lqm}}
 }
 
 \keyword{residuals}
-\keyword{lqm}

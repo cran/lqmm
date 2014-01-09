@@ -43,4 +43,3 @@ Marco Geraci
 }
 
 \keyword{prediction}
-\keyword{lqmm}

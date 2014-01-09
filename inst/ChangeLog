@@ -32,9 +32,15 @@ Version 1.03 (April 30, 2013)
 - Fixed bug in covHandling (lqmm.R)
 - Produce warning when likelihood ratio test is negative
 
+=============================================
 
+Version 1.04 (November 1, 2013)
 
-
+- Changed license from GPL >= 3 to GPL >= 2
+- Added vignette lqmm_manual.pdf
+- Improved code and documentation
+- Corrected bug in lqm.counts (in previous package versions standard errors were NOT divided by sqrt(n))
+- New functions for lqm.counts objects
 
 
 

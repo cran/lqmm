@@ -39,4 +39,3 @@ Marco Geraci
 
 \keyword{random effects}
 \keyword{coefficients}
-\keyword{lqmm}

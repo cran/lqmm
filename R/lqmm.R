@@ -289,23 +289,23 @@ asOneFormula <- function(..., omit = c(".", "pi"))
 ##########################################################################################
 # lqm functions (independent data)
 
-"lqm.fit.gs" <- function(theta, x, y, weights, iota, control) {
+"lqm.fit.gs" <- function(theta, x, y, weights, tau, control) {
 
 p <- ncol(x)
 N <- nrow(x)
 if(is.null(p)) stop("x must be a matrix")
 if(missing(theta)) theta <- lm.fit(as.matrix(x), y)$coefficients
 if(is.null(control$loop_step)) control$loop_step <- sd(as.numeric(y))
-if(length(iota) > 1) {iota <- iota[1]; warning("Length of iota is greater than 1. Only first value taken")}
+if(length(tau) > 1) {tau <- tau[1]; warning("Length of tau is greater than 1. Only first value taken")}
 wx <- x*weights
 wy <- y*weights
 
-fit <- .C("gradientSd_s", theta = as.double(theta), as.double(wx), as.double(wy), as.single(iota), as.integer(N), as.integer(p),
+fit <- .C("gradientSd_s", theta = as.double(theta), as.double(wx), as.double(wy), as.single(tau), as.integer(N), as.integer(p),
           as.double(control$loop_step), as.double(control$beta), as.double(control$gamma), as.integer(control$reset_step), as.double(control$loop_tol_ll), as.double(control$loop_tol_theta), as.integer(control$check_theta), as.integer(control$loop_max_iter), as.integer(control$verbose), CONVERGE = integer(1), grad = double(p), optimum = double(1), PACKAGE = "lqmm")
 
 fit$residuals <- y - x%*%matrix(fit$theta)
-fit$scale <- weighted.mean(fit$residuals * (iota - (fit$residuals < 0)), weights)
-fit$logLik <- -1/fit$scale * fit$optimum + log(iota*(1-iota)/fit$scale)
+fit$scale <- weighted.mean(fit$residuals * (tau - (fit$residuals < 0)), weights)
+fit$logLik <- -1/fit$scale * fit$optimum + log(tau*(1-tau)/fit$scale)
 OPTIMIZATION <- list(loop = fit$CONVERGE)
 
 errorHandling(OPTIMIZATION$loop, "low", control$loop_max_iter, control$loop_tol_ll, "lqm")
@@ -314,7 +314,7 @@ list(theta = fit$theta, scale = fit$scale, gradient = fit$grad, logLik = fit$log
 
 }
 
-"lqmControl" <- function(loop_tol_ll = 1e-5, loop_tol_theta = 1e-5, check_theta = FALSE, loop_step = NULL, beta = 0.5, gamma = 1, reset_step = FALSE, loop_max_iter = 500, verbose = FALSE)
+"lqmControl" <- function(loop_tol_ll = 1e-5, loop_tol_theta = 1e-5, check_theta = FALSE, loop_step = NULL, beta = 0.5, gamma = 1, reset_step = FALSE, loop_max_iter = 1000, verbose = FALSE)
 {
 if(beta > 1 || beta < 0) stop("Beta must be a decreasing factor in (0,1)")
 if(gamma < 1) stop("Beta must be a nondecreasing factor >= 1")
@@ -324,12 +324,12 @@ list(loop_tol_ll = loop_tol_ll, loop_tol_theta = loop_tol_theta, check_theta = c
 
 }
 
-"lqm" <- function(formula, data, subset, na.action, weights = NULL, iota = 0.5, contrasts = NULL, control = list(), fit = TRUE){
+"lqm" <- function(formula, data, subset, na.action, weights = NULL, tau = 0.5, contrasts = NULL, control = list(), fit = TRUE){
 
-if(any(iota <= 0) | any(iota >= 1)) stop("Quantile index out of range")
-iota <- round(sort(iota), digits = 4)
-if(any(duplicated(iota))) stop("Quantile indices duplicated or too close")
-nq <- length(iota)
+if(any(tau <= 0) | any(tau >= 1)) stop("Quantile index out of range")
+tau <- round(sort(tau), digits = 4)
+if(any(duplicated(tau))) stop("Quantile indices duplicated or too close")
+nq <- length(tau)
 
 Call <- match.call()
 mf <- match.call(expand.dots = FALSE)
@@ -366,14 +366,14 @@ if(control$gamma < 1) stop("Beta must be a nondecreasing factor >= 1")
 
 theta_0 <- lm.wfit(x = as.matrix(x), y = y, w = w)$coefficients
 
-if(!fit) return(list(theta = theta_0, x = as.matrix(x), y = y, weights = w, iota = iota, control = control))
+if(!fit) return(list(theta = theta_0, x = as.matrix(x), y = y, weights = w, tau = tau, control = control))
 
 	   if(nq == 1){
-		  fit <- lqm.fit.gs(theta = theta_0, x = as.matrix(x), y = y, weights = w, iota = iota, control = control)}
+		  fit <- lqm.fit.gs(theta = theta_0, x = as.matrix(x), y = y, weights = w, tau = tau, control = control)}
      else {
       fit <- vector("list", nq);
-      names(fit) <- format(iota, digits = 4);
-      for (i in 1:nq) fit[[i]] <- lqm.fit.gs(theta = theta_0, x = as.matrix(x), y = y, weights = w, iota = iota[i], control = control)
+      names(fit) <- format(tau, digits = 4);
+      for (i in 1:nq) fit[[i]] <- lqm.fit.gs(theta = theta_0, x = as.matrix(x), y = y, weights = w, tau = tau[i], control = control)
      }
 
 term.labels <- colnames(x)
@@ -387,7 +387,7 @@ if(nq > 1) {
     fit$scale[i] <- fit[[i]]$scale
     }
   rownames(fit$theta) <- term.labels;
-  colnames(fit$theta) <- format(iota, digits = 4);
+  colnames(fit$theta) <- format(tau, digits = 4);
   }
 
 class(fit) <- "lqm"
@@ -400,7 +400,7 @@ fit$terms <- mt
 fit$nobs <- length(y)
 fit$dim_theta <- fit$edf <- dim_theta
 fit$rdf <- fit$nobs - fit$edf
-fit$iota <- iota
+fit$tau <- tau
 fit$x <- as.matrix(x)
 fit$y <- y
 fit$weights <- w
@@ -413,18 +413,18 @@ fit
 
 print.lqm <- function(x, digits = max(3, getOption("digits") - 3), ...){
 
-iota <- x$iota
-nq <- length(iota)
+tau <- x$tau
+nq <- length(tau)
 
 if(nq == 1){
   theta <- x$theta
   names(theta) <- x$term.labels
-  psi <- varAL(x$scale, iota)
+  psi <- varAL(x$scale, tau)
 
   cat("Call: ")
   dput(x$call)
   cat("\n")
-  cat(paste("Quantile", iota, "\n"))
+  cat(paste("Quantile", tau, "\n"))
   cat("Fixed effects:\n")
   print.default(format(theta, digits = digits), print.gap = 2, quote = FALSE)
 
@@ -435,7 +435,7 @@ if(nq == 1){
   } else {
   theta <- x$theta;
   rownames(theta) <- x$term.labels;
-  colnames(theta) <- paste("iota = ", format(iota, digits = digits), sep ="")
+  colnames(theta) <- paste("tau = ", format(tau, digits = digits), sep ="")
 
   cat("Call: ")
   dput(x$call)
@@ -451,8 +451,8 @@ invisible(x)
 
 coef.lqm <- function(object, ...){
 
-iota <- object$iota
-nq <- length(iota)
+tau <- object$tau
+nq <- length(tau)
 ans <- object$theta
 
 if(nq == 1){
@@ -466,8 +466,8 @@ return(ans)
 "boot.lqm" <- function(object, R = 50, seed = round(runif(1, 1, 10000)), startQR = FALSE){
 
 set.seed(seed)
-iota <- object$iota
-nq <- length(iota)
+tau <- object$tau
+nq <- length(tau)
 obsS <- replicate(R, sample(1:object$nobs, replace = TRUE))
 npars <- object$dim_theta
 
@@ -477,7 +477,7 @@ control$verbose <- FALSE
 if(nq == 1){
   bootmat <- matrix(NA, R, npars);
   colnames(bootmat) <- object$term.labels
-  FIT_ARGS <- list(theta = object$theta, iota = iota, control = control)
+  FIT_ARGS <- list(theta = object$theta, tau = tau, control = control)
   for(i in 1:R){
     a <- table(obsS[,i]);
     s <- as.numeric(names(a));
@@ -493,7 +493,7 @@ if(nq == 1){
     bootmat[i,] <- fit$theta  
   }
 } else {
-  bootmat <- array(NA, dim = c(R, npars, nq), dimnames = list(NULL, object$term.labels, paste("iota = ", format(iota, digits = 4), sep ="")));
+  bootmat <- array(NA, dim = c(R, npars, nq), dimnames = list(NULL, object$term.labels, paste("tau = ", format(tau, digits = 4), sep ="")));
   FIT_ARGS <- list(control = control)
   for(i in 1:R){
     a <- table(obsS[,i]);
@@ -503,7 +503,7 @@ if(nq == 1){
       FIT_ARGS$y <- object$y[s]
       FIT_ARGS$weights <- as.numeric(a)
       FIT_ARGS$theta <- if(startQR) object[[j]]$theta else lm.wfit(x = FIT_ARGS$x, y = FIT_ARGS$y, w = FIT_ARGS$weights)$coefficients
-      FIT_ARGS$iota <- iota[j]
+      FIT_ARGS$tau <- tau[j]
       fit <- try(do.call(lqm.fit.gs, FIT_ARGS))
       if(class(fit)!="try-error") bootmat[i,,j] <- fit$theta
     }
@@ -511,11 +511,12 @@ if(nq == 1){
 }
 
 class(bootmat) <- "boot.lqm"
-attr(bootmat, "iota") <- iota
+attr(bootmat, "tau") <- tau
 attr(bootmat, "estimated") <- object$theta
 attr(bootmat, "R") <- R
 attr(bootmat, "seed") <- seed
 attr(bootmat, "npars") <- npars
+attr(bootmat, "indices") <- obsS
 attr(bootmat, "rdf") <- object$rdf
 
 return(bootmat)
@@ -524,8 +525,8 @@ return(bootmat)
 
 summary.boot.lqm <- function(object, alpha = 0.05, digits = max(3, getOption("digits") - 3), ...){
 
-iota <- attr(object, "iota")
-nq <- length(iota)
+tau <- attr(object, "tau")
+nq <- length(tau)
 
 est <- attr(object, "estimated")
 npars <- attr(object, "npars")
@@ -561,7 +562,7 @@ else {
     } else {ans <- cbind(est[,i], bias[,i], stds[,i], lower[,i], upper[,i], tP[,i])}
     rownames(ans) <- rownames(est)
     colnames(ans) <- nn;
-    cat(paste("iota = ", iota[i], "\n", sep =""))
+    cat(paste("tau = ", tau[i], "\n", sep =""))
     printCoefmat(ans, signif.stars = TRUE, P.values = TRUE)
     cat("\n")
   }
@@ -572,8 +573,8 @@ else {
 
 summary.lqm <- function(object, alpha = 0.05, covariance = FALSE, ...){
 
-iota <- object$iota
-nq <- length(iota)
+tau <- object$tau
+nq <- length(tau)
 theta <- object$theta
 npars <- object$dim_theta
 rdf <- object$rdf
@@ -583,35 +584,37 @@ R <- attr(B, "R")
 nn <- c("Value", "Std. Error", "lower bound", "upper bound", "Pr(>|t|)")
 
 if(nq == 1){
-  Cov <- cov(as.matrix(B))
-  stds <- sqrt(diag(Cov))
-  tP <- 2*pt(-abs(theta/stds), R - 1)
-  lower <- theta + qt(alpha/2, R - 1)*stds
-  upper <- theta + qt(1 - alpha/2, R - 1)*stds
-  ans <- cbind(theta, stds, lower, upper, tP)
-  colnames(ans) <- nn
-}
-else {
-  Cov <- apply(B, 3, function(x) cov(as.matrix(x)))
-  if(npars == 1) Cov <- matrix(Cov, nrow = 1)
-  stds <- sqrt(apply(Cov, 2, function(x, n) diag(matrix(x, n, n, byrow = TRUE)), n = npars))
-  tP <- 2*pt(-abs(theta/stds), R - 1)
-  lower <- theta + qt(alpha/2, R - 1)*stds
-  upper <- theta + qt(1 - alpha/2, R - 1)*stds
-  ans <- vector("list", nq)
-
-  for(i in 1:nq){
-    if(npars == 1){
-    ans[[i]] <- matrix(c(theta[i], stds[i], lower[i], upper[i], tP[i]), nrow = 1);
-    rownames(ans[[i]]) <- rownames(theta)
-    colnames(ans[[i]]) <- nn;
-    } else {
-    ans[[i]] <- cbind(theta[,i], stds[,i], lower[,i], upper[,i], tP[,i])
-    rownames(ans[[i]]) <- rownames(theta)
-    colnames(ans[[i]]) <- nn;
-    }
-  }
-}
+	Cov <- cov(as.matrix(B))
+	stds <- sqrt(diag(Cov))
+	tP <- 2*pt(-abs(theta/stds), R - 1)
+	lower <- theta + qt(alpha/2, R - 1)*stds
+	upper <- theta + qt(1 - alpha/2, R - 1)*stds
+	ans <- cbind(theta, stds, lower, upper, tP)
+	colnames(ans) <- nn
+	} else {
+	Cov <- apply(B, 3, function(x) cov(as.matrix(x)))
+	if(npars == 1) Cov <- matrix(Cov, nrow = 1)
+	stds <- sqrt(apply(Cov, 2, function(x, n) diag(matrix(x, n, n, byrow = TRUE)), n = npars))
+	tP <- 2*pt(-abs(theta/stds), R - 1)
+	lower <- theta + qt(alpha/2, R - 1)*stds
+	upper <- theta + qt(1 - alpha/2, R - 1)*stds
+	ans <- vector("list", nq)
+	Cov.array <- array(NA, dim = c(npars,npars,nq))
+		for(i in 1:nq){
+			if(npars == 1){
+			ans[[i]] <- matrix(c(theta[i], stds[i], lower[i], upper[i], tP[i]), nrow = 1);
+			rownames(ans[[i]]) <- rownames(theta)
+			colnames(ans[[i]]) <- nn;
+			} else {
+			ans[[i]] <- cbind(theta[,i], stds[,i], lower[,i], upper[,i], tP[,i])
+			rownames(ans[[i]]) <- rownames(theta)
+			colnames(ans[[i]]) <- nn;
+			}
+			Cov.array[,,i] <- matrix(Cov[,i], npars, npars)
+		}
+	Cov <- Cov.array
+	dimnames(Cov) <- list(rownames(theta), rownames(theta), format(tau, digits = 4))
+	}
 
 if(covariance) object$Cov <- Cov
 object$tTable <- ans
@@ -623,18 +626,18 @@ return(object)
 
 print.summary.lqm <- function(x, ...){
 
-iota <- x$iota
-nq <- length(iota)
+tau <- x$tau
+nq <- length(tau)
 
 cat("Call: ")
 dput(x$call)
 
   if(nq == 1){
-    cat(paste("Quantile", iota, "\n"))
+    cat(paste("Quantile", tau, "\n"))
     printCoefmat(x$tTable, signif.stars = TRUE, P.values = TRUE)
   } else {
     for(i in 1:nq){
-      cat(paste("iota = ", iota[i], "\n", sep =""))
+      cat(paste("tau = ", tau[i], "\n", sep =""))
       printCoefmat(x$tTable[[i]], signif.stars = TRUE, P.values = TRUE)
       cat("\n")
     }  
@@ -648,8 +651,8 @@ predict.lqm <- function(object, newdata, interval = FALSE,
 	level = 0.95, na.action = na.pass, ...) 
 {
 
-iota <- object$iota
-nq <- length(iota)
+tau <- object$tau
+nq <- length(tau)
 lp <- (1 - level)/2
 up <- 1 - lp
 
@@ -687,7 +690,7 @@ qrow <- function(x,p) apply(x, 1, function(y) quantile(y, p))
 	}
 
 	if(nq > 1 && interval){
-		res <- array(NA, dim = c(object$nobs,3,nq), dimnames = list(NULL, c("fitted", "lower", "higher"), format(iota, 4)))
+		res <- array(NA, dim = c(object$nobs,3,nq), dimnames = list(NULL, c("fitted", "lower", "higher"), format(tau, 4)))
 		for(i in 1:nq) res[,,i] <- cbind(yhat[,i],low[,i],upp[,i])
 		yhat <- res
 	}
@@ -706,15 +709,15 @@ return(ans)
 logLik.lqm <- function(object, ...){
 
 tdf <- object$edf + 1
-iota <- object$iota
-nq <- length(iota)
+tau <- object$tau
+nq <- length(tau)
 
   if(nq == 1){
   ans <- object$logLik
   } else {
     ans <- NULL
     for(i in 1:nq) ans <- c(ans, object[[i]]$logLik);
-    names(ans) <- as.character(format(iota, digits = 4))
+    names(ans) <- as.character(format(tau, digits = 4))
   }
 
 attr(ans, "nobs") <- object$nobs
@@ -801,7 +804,7 @@ if(rule == "product"){
 	else
 		{QUAD <- gauss.quad(n = k/2, kind = "laguerre");
 		QUAD$nodes <- c(-rev(QUAD$nodes),QUAD$nodes)}
-	QUAD$weights <- dal(QUAD$nodes, mu = 0, sigma = 1, p = 0.5, log = FALSE)
+	QUAD$weights <- dal(QUAD$nodes, mu = 0, sigma = 1, tau = 0.5, log = FALSE)
 	QUAD$nodes <- permutations(n = k, r = q, v = QUAD$nodes, set = FALSE, repeats.allowed = TRUE);
 	QUAD$weights <- apply(permutations(n = k, r = q, v = QUAD$weights, set = FALSE, repeats.allowed = TRUE), 1, prod)
 }	
@@ -810,7 +813,7 @@ if(rule == "sparse"){
 	if(odd)
 		{QUAD <- createSparseGrid(function(k) gauss.quad(n = k, kind = "laguerre"), dimension = q, k = (k - 1)/2, sym = FALSE);
 		QUAD$nodes <- rbind(-QUAD$nodes,rep(0,q),QUAD$nodes);
-		QUAD$weights <- c(QUAD$weights,dal(rep(0,q), mu = 0, sigma = 1, p = 0.5, log = FALSE)^q,QUAD$weights)}
+		QUAD$weights <- c(QUAD$weights,dal(rep(0,q), mu = 0, sigma = 1, tau = 0.5, log = FALSE)^q,QUAD$weights)}
 	else
 		{QUAD <- createSparseGrid(function(k) gauss.quad(n = k, kind = "laguerre"), dimension = q, k = k/2, sym = FALSE);
 		QUAD$nodes <- rbind(-QUAD$nodes,QUAD$nodes);
@@ -890,22 +893,22 @@ return(QUAD)
 
 ##
 
-"loglik.t" <- function(theta, sigma, x, y, z, weights, Tq, V, W, iota, p, q, m, M, N, Kq, minn, maxn){
+"loglik.t" <- function(theta, sigma, x, y, z, weights, Tq, V, W, tau, p, q, m, M, N, Kq, minn, maxn){
 
 if(length(theta) != (p + m)) stop("Check length theta")
 
-ans = .C("ll_h_R", theta = as.double(theta), as.double(x), as.double(y), as.double(z), as.double(weights), as.double(Tq), as.double(V), as.double(W),	as.double(sigma), as.single(iota), as.integer(p), as.integer(q), as.integer(m), as.integer(M),
+ans = .C("ll_h_R", theta = as.double(theta), as.double(x), as.double(y), as.double(z), as.double(weights), as.double(Tq), as.double(V), as.double(W),	as.double(sigma), as.single(tau), as.integer(p), as.integer(q), as.integer(m), as.integer(M),
 		as.integer(N), as.integer(Kq), as.integer(minn-1), as.integer(maxn), loglik = double(1), PACKAGE = "lqmm")
 
 ans$loglik
 }
 
 
-"loglik.s" <- function(sigma, theta, x, y, z, weights, Tq, V, W, iota, p, q, m, M, N, Kq, minn, maxn){
+"loglik.s" <- function(sigma, theta, x, y, z, weights, Tq, V, W, tau, p, q, m, M, N, Kq, minn, maxn){
 
 if(length(theta) != (p + m)) stop("Check length theta")
 
-ans = .C("ll_h_R", theta = as.double(theta), as.double(x), as.double(y), as.double(z), as.double(weights), as.double(Tq), as.double(V), as.double(W),	as.double(sigma), as.single(iota), as.integer(p), as.integer(q), as.integer(m), as.integer(M),
+ans = .C("ll_h_R", theta = as.double(theta), as.double(x), as.double(y), as.double(z), as.double(weights), as.double(Tq), as.double(V), as.double(W),	as.double(sigma), as.single(tau), as.integer(p), as.integer(q), as.integer(m), as.integer(M),
 		as.integer(N), as.integer(Kq), as.integer(minn-1), as.integer(maxn), loglik = double(1), PACKAGE = "lqmm")
 
 ans$loglik
@@ -913,9 +916,9 @@ ans$loglik
 
 ##
 
-"lqmm.fit.df" <- function(theta_0, x, y, z, weights, cov_name, V, W, sigma_0, iota, group, control){
+"lqmm.fit.df" <- function(theta_0, x, y, z, weights, cov_name, V, W, sigma_0, tau, group, control){
 
-if(length(iota) > 1) {iota <- iota[1]; warning("Length of iota is greater than 1. Only first value taken")}
+if(length(tau) > 1) {tau <- tau[1]; warning("Length of tau is greater than 1. Only first value taken")}
 
 x <- as.matrix(x)
 z <- as.matrix(z)
@@ -947,13 +950,13 @@ while(r < UP_max_iter){
 
 if(control$verbose) cat(paste("Upper loop = ", r + 1, "\n",sep=""))
 
-ans <- optim(par = theta_0, fn = loglik.t, sigma = sigma_0, x = x, y = y, z = z, weights = weights, Tq = Tq, V = V, W = W,	iota = iota, p = p, q = q, m = m, M = M, N = N, Kq = Kq, minn = minn, maxn = maxn, control = list(maxit = control$LP_max_iter, abstol = control$LP_tol_ll, trace = control$verbose))
+ans <- optim(par = theta_0, fn = loglik.t, sigma = sigma_0, x = x, y = y, z = z, weights = weights, Tq = Tq, V = V, W = W,	tau = tau, p = p, q = q, m = m, M = M, N = N, Kq = Kq, minn = minn, maxn = maxn, control = list(maxit = control$LP_max_iter, abstol = control$LP_tol_ll, trace = control$verbose))
 
 if(control$verbose) cat(paste("(", r+1, ")", " logLik = ", round(-ans$value,3), "\n",sep =""))
 
 theta_1 <- ans$par
 
-opt_s <- optimize(f = loglik.s, interval = c(.Machine$double.eps, 1e3*sigma_0), theta = theta_1, x = x, y = y, z = z, weights = weights, Tq = Tq, V = V, W = W, iota = iota, p = p, q = q, m = m, M = M, N = N, Kq = Kq, minn = minn, maxn = maxn)
+opt_s <- optimize(f = loglik.s, interval = c(.Machine$double.eps, 1e3*sigma_0), theta = theta_1, x = x, y = y, z = z, weights = weights, Tq = Tq, V = V, W = W, tau = tau, p = p, q = q, m = m, M = M, N = N, Kq = Kq, minn = minn, maxn = maxn)
 
 sigma_1 <- opt_s$minimum
 
@@ -985,9 +988,9 @@ list(theta = theta_1, scale = sigma_1, logLik = -ans$value, opt = OPTIMIZATION)
 
 ##
 
-"lqmm.fit.gs" <- function(theta_0, x, y, z, weights, cov_name, V, W, sigma_0, iota, group, control){
+"lqmm.fit.gs" <- function(theta_0, x, y, z, weights, cov_name, V, W, sigma_0, tau, group, control){
 
-if(length(iota) > 1) {iota <- iota[1]; warning("Length of iota is greater than 1. Only first value taken")}
+if(length(tau) > 1) {tau <- tau[1]; warning("Length of tau is greater than 1. Only first value taken")}
 
 x <- as.matrix(x)
 z <- as.matrix(z)
@@ -1021,7 +1024,7 @@ while(r < UP_max_iter){
 if(control$verbose) cat(paste("Upper loop = ", r + 1, "\n",sep=""))
 
 ans <- .C("gradientSd_h", theta = as.double(theta_0), as.double(x), as.double(y), as.double(z), as.double(weights), as.double(Tq), as.double(V), as.double(W),
-		as.double(sigma_0), as.single(iota), as.integer(p), as.integer(q), as.integer(m), as.integer(M), as.integer(N),	as.integer(Kq), as.integer(minn-1),
+		as.double(sigma_0), as.single(tau), as.integer(p), as.integer(q), as.integer(m), as.integer(M), as.integer(N),	as.integer(Kq), as.integer(minn-1),
 		as.integer(maxn), as.double(control$LP_step), as.double(control$beta), as.double(control$gamma), as.integer(control$reset_step),
 		as.double(control$LP_tol_ll), as.double(control$LP_tol_theta), as.integer(control$check_theta), as.integer(control$LP_max_iter),
 		as.integer(control$verbose), low_loop = integer(1), double(1), grad = double(p + m), opt_val = double(1), PACKAGE = "lqmm")
@@ -1029,7 +1032,7 @@ ans <- .C("gradientSd_h", theta = as.double(theta_0), as.double(x), as.double(y)
 theta_1 <- ans$theta
 grad <- ans$grad
 
-opt_s <- optimize(f = loglik.s, interval = c(.Machine$double.eps, 10*sigma_0), theta = theta_1, x = x, y = y, z = z, weights = weights, Tq = Tq, V = V, W = W, iota = iota, p = p, q = q, m = m, M = M, N = N, Kq = Kq, minn = minn, maxn = maxn)
+opt_s <- optimize(f = loglik.s, interval = c(.Machine$double.eps, 10*sigma_0), theta = theta_1, x = x, y = y, z = z, weights = weights, Tq = Tq, V = V, W = W, tau = tau, p = p, q = q, m = m, M = M, N = N, Kq = Kq, minn = minn, maxn = maxn)
 
 sigma_1 <- opt_s$minimum
 
@@ -1079,15 +1082,15 @@ if(code == -2) warning(paste(txt, " did not start in: ", fn, ". Check max number
 
 }
 
-"lqmm" <- function(fixed, random, group, covariance = "pdDiag", iota = 0.5, nK = 7, type = "normal", rule = 1, data = sys.frame(sys.parent()), subset, weights, na.action = na.fail, control = list(), contrasts = NULL, fit = TRUE)
+"lqmm" <- function(fixed, random, group, covariance = "pdDiag", tau = 0.5, nK = 7, type = "normal", rule = 1, data = sys.frame(sys.parent()), subset, weights, na.action = na.fail, control = list(), contrasts = NULL, fit = TRUE)
 {
  
 Call <- match.call()
   
-if(any(iota <= 0) | any(iota >= 1)) stop("Quantile index out of range")
-iota <- round(sort(iota), digits = 8)
-if(any(duplicated(iota))) stop("Quantile indices duplicated or too close")
-nq <- length(iota)
+if(any(tau <= 0) | any(tau >= 1)) stop("Quantile index out of range")
+tau <- round(sort(tau), digits = 8)
+if(any(duplicated(tau))) stop("Quantile indices duplicated or too close")
+nq <- length(tau)
 
 if(!is.data.frame(data)) stop("`data' must be a data frame")
 if(!(type %in% c("normal","robust"))) stop("type must be either `normal' or `robust'")
@@ -1185,8 +1188,8 @@ lmfit <- lm.wfit(x = mmf, y = y, w = rep(weights, table(grp)))
 theta_x <- lmfit$coefficients
 
 	if(control$startQR){
-		q_close <- if(nq == 1) iota else 0.5
-		fit_rq <- lqm.fit.gs(theta = theta_x, x = as.matrix(mmf), y = y, weights = rep(weights, table(grp)), iota = q_close,
+		q_close <- if(nq == 1) tau else 0.5
+		fit_rq <- lqm.fit.gs(theta = theta_x, x = as.matrix(mmf), y = y, weights = rep(weights, table(grp)), tau = q_close,
                 control = lqmControl(loop_step = sd(as.numeric(y))));
 		theta_x <- fit_rq$theta;
 		sigma_0 <- fit_rq$scale
@@ -1196,7 +1199,7 @@ theta_x <- lmfit$coefficients
 theta_0 <- c(theta_x, theta_z)
 
 ## Create list with all necessary arguments
-FIT_ARGS <- list(theta_0 = theta_0, x = as.matrix(mmf), y = y, z = as.matrix(mmr), weights = weights, V = QUAD$nodes, W = QUAD$weights, sigma_0 = sigma_0, iota = iota, group = grp, cov_name = cov_name, control = control)
+FIT_ARGS <- list(theta_0 = theta_0, x = as.matrix(mmf), y = y, z = as.matrix(mmr), weights = weights, V = QUAD$nodes, W = QUAD$weights, sigma_0 = sigma_0, tau = tau, group = grp, cov_name = cov_name, control = control)
 
 if(!fit) return(FIT_ARGS)
 
@@ -1206,9 +1209,9 @@ if(!fit) return(FIT_ARGS)
 		  fit <- do.call(lqmm.fit.gs, FIT_ARGS)}
      else {
       fit <- vector("list", nq);
-      names(fit) <- format(iota, digits = 4);
+      names(fit) <- format(tau, digits = 4);
       for (i in 1:nq){
-		    FIT_ARGS$iota <- iota[i];
+		    FIT_ARGS$tau <- tau[i];
 			fit[[i]] <- do.call(lqmm.fit.gs, FIT_ARGS)
       }
      }
@@ -1218,9 +1221,9 @@ if(!fit) return(FIT_ARGS)
 		  fit <- do.call(lqmm.fit.df, FIT_ARGS)}
 		else {
 			fit <- vector("list", nq);
-			names(fit) <- format(iota, digits = 4);
+			names(fit) <- format(tau, digits = 4);
 			for (i in 1:nq){
-				FIT_ARGS$iota <- iota[i];
+				FIT_ARGS$tau <- tau[i];
 				fit[[i]] <- do.call(lqmm.fit.df, FIT_ARGS)
 			}
 		 }
@@ -1237,7 +1240,7 @@ if(nq > 1) {
     fit$theta_z[,i] <- fit[[i]]$theta_z <- fit[[i]]$theta[-(1:dim_theta[1])]
     }
   rownames(fit$theta_x) <- nn;
-  colnames(fit$theta_x) <- colnames(fit$theta_z) <- format(iota, digits = 4);
+  colnames(fit$theta_x) <- colnames(fit$theta_z) <- format(tau, digits = 4);
   }
 else {
   fit$theta_x <- fit$theta[1:dim_theta[1]];
@@ -1254,7 +1257,7 @@ fit$dim_theta_z <- dim_theta_z
 fit$edf <- fit$dim_theta[1] + fit$dim_theta_z
 fit$rdf <- fit$nobs - fit$edf
 fit$df <- dim_theta[1] +  dim_theta_z + 1
-fit$iota <- iota
+fit$tau <- tau
 fit$mmf <- as.matrix(mmf)
 fit$mmr <- as.matrix(mmr)
 fit$y <- y
@@ -1348,8 +1351,8 @@ return(sigma)
 
 cov.lqmm <- function(object, ...){
 
-iota <- object$iota
-nq <- length(iota)
+tau <- object$tau
+nq <- length(tau)
 
 theta_z <- object$theta_z
 dim_theta <- object$dim_theta
@@ -1366,7 +1369,7 @@ mm <- object$mm
 		if(cov_name == "pdSymm") {rownames(sigma) <- colnames(sigma) <- mm}
 	} else {
 		sigma <- vector("list", nq);
-		names(sigma) <- format(iota, digits = 4);
+		names(sigma) <- format(tau, digits = 4);
 		for(i in 1:nq){
 			sigma[[i]] <- covHandling(theta = theta_z[,i], n = q, cov_name = cov_name, quad_type = type)
 			if(cov_name == "pdIdent") {sigma[[i]] <- rep(sigma[[i]], q); names(sigma[[i]]) <- mm}
@@ -1383,23 +1386,25 @@ return(sigma)
 
 print.lqmm <- function(x, digits = max(3, getOption("digits") - 3), ...){
 
-iota <- x$iota
-nq <- length(iota)
+tau <- x$tau
+nq <- length(tau)
 
 if(nq == 1){
   theta_x <- x$theta_x
   names(theta_x) <- x$nn
   sigma <- cov.lqmm(x)
-  psi <- varAL(x$scale, iota)
+  psi <- varAL(x$scale, tau)
 
   cat("Call: ")
   dput(x$call)
   cat("\n")
-  cat(paste("Quantile", iota, "\n"))
+  cat(paste("Quantile", tau, "\n"))
+  cat("\n")
+
   cat("Fixed effects:\n")
   print.default(format(theta_x, digits = digits), print.gap = 2, quote = FALSE)
-
-  cat("Random effects:\n")
+  cat("\n")
+  cat("Covariance matrix of the random effects:\n")
   print.default(format(sigma, digits = digits), quote = FALSE)
 
   cat("\n")
@@ -1410,15 +1415,33 @@ if(nq == 1){
   cat(paste("Number of groups:", x$ngroups, "\n"))
   
 } else {
-  theta_x <- x$theta_x;
-  colnames(theta_x) <- paste("iota = ", format(iota, digits = digits), sep ="");
-  rownames(theta_x) <- x$nn;
+  theta_x <- x$theta_x
+  colnames(theta_x) <- paste("tau = ", format(tau, digits = digits), sep ="")
+  rownames(theta_x) <- x$nn
+  Scale <- sapply(x[1:nq], function(z) z$scale)
+  psi <- varAL(sigma = Scale, tau = tau)
+  sigma <- cov.lqmm(x)
+  ll <- sapply(x[1:nq], function(z) z$logLik)
 
   cat("Call: ")
   dput(x$call)
   cat("\n")
-  cat("Fixed effects:\n");
+  cat("Fixed effects:\n")
   print.default(format(theta_x, digits = digits), print.gap = 2, quote = FALSE)
+  cat("\n")
+  cat("Covariance matrix of the random effects:\n")
+  for(i in 1:nq){
+  cat(paste("tau = "), tau[i], "\n", sep = "")
+  print.default(format(sigma[[i]], digits = digits), quote = FALSE)
+  }
+  
+  cat("\n")
+  cat("Residual scale parameter: ")
+  cat(paste(format(Scale, digits = digits), " (tau = ", tau, ") ", sep = ""))
+  cat("\n")
+  cat("Log-likelihood: ")
+  cat(paste(format(ll, digits = digits), " (tau = ", tau, ") ", sep = ""))
+  cat("\n")
   cat(paste("\nNumber of observations:", length(x$y), "\n"))
   cat(paste("Number of groups:", x$ngroups, "\n"))
 
@@ -1430,8 +1453,8 @@ invisible(x)
 
 coef.lqmm <- function(object, ...){
 
-iota <- object$iota
-nq <- length(iota)
+tau <- object$tau
+nq <- length(tau)
 ans <- object$theta_x
 
 if(nq == 1){
@@ -1445,8 +1468,8 @@ return(ans)
 
 raneff.lqmm <- function(object){
 
-iota <- object$iota
-nq <- length(iota)
+tau <- object$tau
+nq <- length(tau)
 group <- object$group
 M <- object$ngroups
 BLPu <- vector("list", M)
@@ -1461,11 +1484,11 @@ if(cov_name %in% c("pdIdent","pdDiag")){
 }
 
 if(nq == 1){
-  psi <- varAL(object$scale, iota)
+  psi <- varAL(object$scale, tau)
   INV <- lapply(mmr.l, function(x, a, b, q) {x <- matrix(x, ncol = q); n <- nrow(x); y <- x%*%a%*%t(x) + diag(b, n); solve(y)},
                                       a = sigma, b = psi, q = q)
   GZ <- lapply(mmr.l, function(x, a, q) {x <- matrix(x, ncol = q); a%*%t(x)}, a = sigma, q = q)
-  RES <- split(object$y - object$mmf%*%matrix(object$theta_x) - meanAL(0, object$scale, iota), group)
+  RES <- split(object$y - object$mmf%*%matrix(object$theta_x) - meanAL(0, object$scale, tau), group)
   for(i in 1:M){
     BLPu[[i]] <- GZ[[i]]%*%INV[[i]]%*%matrix(RES[[i]])
   }
@@ -1476,11 +1499,11 @@ colnames(ans) <- object$mm;
   ans <- vector("list", nq)
   for(j in 1:nq){  
     tmp <- object[[j]];
-    psi <- varAL(tmp$scale, iota[j])
+    psi <- varAL(tmp$scale, tau[j])
     INV <- lapply(mmr.l, function(x, a, b, q) {x <- matrix(x, ncol = q); n <- nrow(x); y <- x%*%a%*%t(x) + diag(b, n); solve(y)},
                                       a = sigma[[j]], b = psi, q = q)
     GZ <- lapply(mmr.l, function(x, a, q) {x <- matrix(x, ncol = q); a%*%t(x)}, a = sigma[[j]], q = q)
-    RES <- split(object$y - object$mmf%*%matrix(tmp$theta_x) - meanAL(0, tmp$scale, iota[j]), group)
+    RES <- split(object$y - object$mmf%*%matrix(tmp$theta_x) - meanAL(0, tmp$scale, tau[j]), group)
       for(i in 1:M){
         BLPu[[i]] <- GZ[[i]]%*%INV[[i]]%*%matrix(RES[[i]])
       }
@@ -1488,7 +1511,7 @@ colnames(ans) <- object$mm;
    rownames(ans[[j]]) <- unique(group);
    colnames(ans[[j]]) <- object$mm;
   }
- names(ans) <- format(iota, digits = 4)
+ names(ans) <- format(tau, digits = 4)
  }
 return(ans)
 }
@@ -1496,8 +1519,8 @@ return(ans)
 
 predict.lqmm <- function(object, level = 0, ...){
 
-iota <- object$iota
-nq <- length(iota)
+tau <- object$tau
+nq <- length(tau)
 group <- object$group
 M <- object$ngroups
 q <- object$dim_theta[2]
@@ -1526,8 +1549,8 @@ if(level == 1){
     }
 }
 
-if(level == 0) {colnames(FXD) <- format(iota, digits = 4); return(FXD[object$revOrder,])}
-if(level == 1) {ans <- FXD + RND; colnames(ans) <- format(iota, digits = 4); return(ans[object$revOrder,])}
+if(level == 0) {colnames(FXD) <- format(tau, digits = 4); return(FXD[object$revOrder,])}
+if(level == 1) {ans <- FXD + RND; colnames(ans) <- format(tau, digits = 4); return(ans[object$revOrder,])}
 
 }
 
@@ -1541,15 +1564,15 @@ object$y[object$revOrder] - predict(object, level = level)
 logLik.lqmm <- function(object, ...){
 
 tdf <- object$edf + 1
-iota <- object$iota
-nq <- length(iota)
+tau <- object$tau
+nq <- length(tau)
 
   if(nq == 1){
   ans <- object$logLik
   } else {
     ans <- NULL
     for(i in 1:nq) ans <- c(ans, object[[i]]$logLik);
-    names(ans) <- as.character(format(iota, digits = 4))
+    names(ans) <- as.character(format(tau, digits = 4))
   }
   
 attr(ans, "nobs") <- object$nobs
@@ -1572,8 +1595,8 @@ return(ans)
 
 summary.lqmm <- function(object, method = "boot", alpha = 0.05, covariance = FALSE, ...){
 
-iota <- object$iota
-nq <- length(iota)
+tau <- object$tau
+nq <- length(tau)
 object$logLik <- logLik(object)
 object$aic <- AIC(object)
 est <- extractAll(object)
@@ -1590,7 +1613,7 @@ coln <- c("Value", "Std. Error", "lower bound", "upper bound", "Pr(>|t|)")
     LR <- -2*(logLik(FITNULL) - object$logLik);
     if(any(LR < 0)) {LR[LR < 0] <- 0; warning("Negative LR test (set to zero).")};
     LRp <- 1 - pchisq(LR, df = ddf);
-    names(LR) <- iota;
+    names(LR) <- tau;
     attr(LR, "pvalue") <- LRp;
     attr(LR, "df") <- ddf;
     object$LRtest <- LR;
@@ -1608,7 +1631,7 @@ coln <- c("Value", "Std. Error", "lower bound", "upper bound", "Pr(>|t|)")
 		upper <- est + qt(1 - alpha/2, R - 1)*stds
 		ans <- cbind(est, stds, lower, upper, tP)
 		colnames(ans) <- coln
-		ans <- ans[c(nn,"scale"),]
+		ans <- ans[c(nn),,drop=FALSE]
     } else {
 		Cov <- apply(B, 3, function(x) cov(as.matrix(x)))
 		stds <- sqrt(apply(Cov, 2, function(x, n) diag(matrix(x, n, n, byrow = TRUE)), n = npars))
@@ -1616,17 +1639,19 @@ coln <- c("Value", "Std. Error", "lower bound", "upper bound", "Pr(>|t|)")
 		lower <- est + qt(alpha/2, R - 1)*stds
 		upper <- est + qt(1 - alpha/2, R - 1)*stds
 		ans <- vector("list", nq)
-		Cov.array <- array(NA, dim = c(object$df,object$df,nq),
-		dimnames = c(rownames(attr(B, "estimated")),rownames(attr(B, "estimated")),format(iota, digits = 4)))
+		names(ans) <- tau
+		Cov.array <- array(NA, dim = c(object$df,object$df,nq))
 		  for(i in 1:nq){
 			ans[[i]] <- cbind(est[,i], stds[,i], lower[,i], upper[,i], tP[,i]);
 			rownames(ans[[i]]) <- rownames(est)
 			colnames(ans[[i]]) <- coln;
-			ans[[i]] <- ans[[i]][c(nn,"scale"),]
+			ans[[i]] <- ans[[i]][c(nn),,drop=FALSE]
 			Cov.array[,,i] <- matrix(Cov[,i], object$df, object$df)
+			}
+		Cov <- Cov.array
+		dimnames(Cov) <- list(rownames(attr(B, "estimated")), rownames(attr(B, "estimated")), format(tau, digits = 4))
 		}
 	}
-  }
 
 if(covariance) object$Cov <- Cov
 object$tTable <- ans
@@ -1639,19 +1664,25 @@ return(object)
 
 print.summary.lqmm <- function(x, digits = max(3, getOption("digits") - 3), ...){
 
-iota <- x$iota
-nq <- length(iota)
+tau <- x$tau
+nq <- length(tau)
 
 cat("Call: ")
 dput(x$call)
 cat("\n")
 
   if (nq == 1) {
-    cat(paste("Quantile", iota, "\n"))
+    cat(paste("Quantile", tau, "\n"))
+	cat("\n")
+
+    cat("Fixed effects:\n")
     printCoefmat(x$tTable, signif.stars = TRUE, P.values = TRUE)
   } else {
     for (i in 1:nq) {
-      cat(paste("iota = ", iota[i], "\n", sep = ""))
+      cat(paste("tau = ", tau[i], "\n", sep = ""))
+	  cat("\n")
+      cat("Fixed effects:\n")
+
       printCoefmat(x$tTable[[i]], signif.stars = TRUE, P.values = TRUE)
       cat("\n")
     }
@@ -1675,8 +1706,8 @@ boot.lqmm <- function(object, R = 50, seed = round(runif(1, 1, 10000)), startQR 
 if(startQR) warning("Standard errors may be underestimated when 'startQR = TRUE'")
 
 set.seed(seed)
-iota <- object$iota
-nq <- length(iota)
+tau <- object$tau
+nq <- length(tau)
 
 ngroups <- object$ngroups
 group_all <- object$group
@@ -1697,7 +1728,7 @@ if(nq == 1){
 
   FIT_ARGS$theta_0 <- object$theta;
   FIT_ARGS$sigma_0 <- object$scale;
-  FIT_ARGS$iota <- object$iota;
+  FIT_ARGS$tau <- object$tau;
 
   bootmat <- matrix(NA, R, npars);
   colnames(bootmat) <- dimn
@@ -1729,7 +1760,7 @@ if(nq == 1){
   }
 } else {
 
-  bootmat <- array(NA, dim = c(R, npars, nq), dimnames = list(NULL, dimn, paste("iota = ", format(iota, digits = 4), sep ="")));
+  bootmat <- array(NA, dim = c(R, npars, nq), dimnames = list(NULL, dimn, paste("tau = ", format(tau, digits = 4), sep ="")));
 
   for(i in 1:R){
     group_freq <- table(obsS[,i]);
@@ -1750,7 +1781,7 @@ if(nq == 1){
 			FIT_ARGS$sigma_0 <- invvarAL(mean(lmfit$residuals^2), 0.5)
 		}
 
-		FIT_ARGS$iota <- object$iota[j];
+		FIT_ARGS$tau <- object$tau[j];
 
 		if(control$method == "gs") fit <- try(do.call(lqmm.fit.gs, FIT_ARGS));
 		if(control$method == "df") fit <- try(do.call(lqmm.fit.df, FIT_ARGS));
@@ -1760,12 +1791,13 @@ if(nq == 1){
 }
 
 class(bootmat) <- "boot.lqmm"
-attr(bootmat, "iota") <- iota
+attr(bootmat, "tau") <- tau
 attr(bootmat, "estimated") <- extractAll(object)
 attr(bootmat, "R") <- R
 attr(bootmat, "seed") <- seed
 attr(bootmat, "nn") <- object$nn
 attr(bootmat, "npars") <- npars
+attr(bootmat, "indices") <- obsS
 attr(bootmat, "dim_theta") <- object$dim_theta
 attr(bootmat, "dim_theta_z") <- object$dim_theta_z
 
@@ -1776,8 +1808,8 @@ return(bootmat)
 
 extractBoot.lqmm <- function(object, which = "fixed"){
 
-iota <- attr(object, "iota")
-nq <- length(iota)
+tau <- attr(object, "tau")
+nq <- length(tau)
 nn <- attr(object, "nn")
 dim_theta <- attr(object, "dim_theta")
 dim_theta_z <- attr(object, "dim_theta_z")
@@ -1812,8 +1844,8 @@ summary.boot.lqmm <- function(object, alpha = 0.05, digits = max(3, getOption("d
 
 est <- attr(object, "estimated")
 R <- attr(object, "R")
-iota <- attr(object, "iota")
-nq <- length(iota)
+tau <- attr(object, "tau")
+nq <- length(tau)
 nn <- attr(object, "nn")
 npars <- attr(object, "npars")
 coln <- c("Value", "Std. Error", "lower bound", "upper bound", "Pr(>|t|)")
@@ -1827,7 +1859,7 @@ if(nq == 1){
   ans <- cbind(est, stds, lower, upper, tP)
   colnames(ans) <- coln
   ans <- ans[c(nn,"scale"),]
-  cat(paste("Quantile", iota, "\n"))
+  cat(paste("Quantile", tau, "\n"))
   printCoefmat(ans, signif.stars = TRUE, P.values = TRUE)
 }
 else {
@@ -1841,7 +1873,7 @@ else {
     rownames(ans) <- rownames(est)
     colnames(ans) <- coln;
     ans <- ans[c(nn,"scale"),]
-    cat(paste("iota = ", iota[i], "\n", sep =""))
+    cat(paste("tau = ", tau[i], "\n", sep =""))
     printCoefmat(ans, signif.stars = TRUE, P.values = TRUE)
     cat("\n")
   }
@@ -1853,7 +1885,7 @@ else {
 
 extractAll <- function(object){
 
-nq <- length(object$iota)
+nq <- length(object$tau)
 
 dim_theta_z <- object$dim_theta_z
 dimn <- c(object$nn, paste("reStruct", 1:dim_theta_z, sep=""), "scale")
@@ -1875,90 +1907,90 @@ return(ans)
 ##########################################################################################
 # Asymmetric Laplace distribution
 
-dal <- function(x, mu = 0, sigma = 1, p = 0.5, log = FALSE) {
+dal <- function(x, mu = 0, sigma = 1, tau = 0.5, log = FALSE) {
 
 ind <- ifelse(x < mu, 1, 0)
 
-val <- p*(1-p)/sigma * exp(-(x - mu)/sigma * (p- ind))
+val <- tau*(1-tau)/sigma * exp(-(x - mu)/sigma * (tau - ind))
 
 if(log) log(val) else val
 
 }
 
-pal <- function(x, mu = 0, sigma = 1, p = 0.5) {
+pal <- function(x, mu = 0, sigma = 1, tau = 0.5) {
 
-ifelse(x < mu, p * exp( (1 - p) / sigma * (x - mu)),
+ifelse(x < mu, tau * exp( (1 - tau) / sigma * (x - mu)),
 
-1 - (1 -p) *exp(- p / sigma * (x - mu)))
+1 - (1 - tau) *exp(- tau / sigma * (x - mu)))
 
 }
 
-ral <- function(n, mu = 0, sigma = 1, p = 0.5) {
+ral <- function(n, mu = 0, sigma = 1, tau = 0.5) {
 
 u <- runif(n)
 
-x1 <- mu + sigma/(1-p) * log(u/p)
+x1 <- mu + sigma/(1-tau) * log(u/tau)
 
-x2 <- mu - sigma/p * log ((1-u) / (1-p))
+x2 <- mu - sigma/tau * log ((1-u) / (1-tau))
 
 ifelse(x1 < mu, x1, x2)
 
 }
 
-qal <- function(x, mu = 0, sigma = 1, p = 0.5) {
+qal <- function(x, mu = 0, sigma = 1, tau = 0.5) {
 
-if(x > 1 | x < 0) stop("p must be in [0,1]")
+if(any(x > 1) | any(x < 0)) stop("tau must be in [0,1]")
 
-ifelse(x < p, mu + (sigma/(1-p))*log(x/p),
+ifelse(x < tau, mu + (sigma/(1-tau))*log(x/tau),
 
-mu - (sigma/p)*log((1-x)/(1-p)))
-
-}
-
-
-meanAL <- function(mu, sigma, p){
-
-mu + sigma*(1-2*p)/(p*(1-p))
+mu - (sigma/tau)*log((1-x)/(1-tau)))
 
 }
 
-varAL <- function(sigma, p) {
 
-sigma^2*(1-2*p+2*p^2)/((1-p)^2*p^2)
+meanAL <- function(mu, sigma, tau){
+
+mu + sigma*(1-2*tau)/(tau*(1-tau))
 
 }
 
-invvarAL <- function(x, p) {
+varAL <- function(sigma, tau) {
 
-sqrt(x*(p*(1-p))^2/(1-2*p+2*p^2))
+sigma^2*(1-2*tau+2*tau^2)/((1-tau)^2*tau^2)
+
+}
+
+invvarAL <- function(x, tau) {
+
+sqrt(x*(tau*(1-tau))^2/(1-2*tau+2*tau^2))
 
 }
 
 
 mleAL <- function(x){
 
-p <- 0.5
-m <- as.numeric(quantile(x, p))
+tau <- 0.5
+m <- as.numeric(quantile(x, tau))
 sigma <- 1
 
 r <- 0
 while(r < 1000){
 
-m.last <- as.numeric(quantile(x, p))
+m.last <- as.numeric(quantile(x, tau))
 res <- x - m.last
-sigma.last <- mean(res*(p - ifelse(res<0,1,0)))
+sigma.last <- mean(res*(tau - ifelse(res<0,1,0)))
 a <- mean(res*ifelse(res<=0,1,0))
-p.last <- (a + sqrt(a^2 - (mean(x) - m.last)*a))/(mean(x)-m.last)
+tau.last <- (a + sqrt(a^2 - (mean(x) - m.last)*a))/(mean(x)-m.last)
 
 dm <- abs(m-m.last)
 ds <- abs(sigma-sigma.last)
-dp <- abs(p-p.last)
+dp <- abs(tau-tau.last)
 
 if(all(c(dm,ds,dp)<0.0001)) break
-	else {m <- m.last; p <- p.last; sigma <- sigma.last}
+	else {m <- m.last; tau <- tau.last; sigma <- sigma.last}
 r <- r+1
 }
-list(m=m,sigma=sigma,p=p,r=r)
+list(m=m,sigma=sigma,tau=tau,r=r)
 }
 
 ##########################################################################################
@@ -1979,16 +2011,23 @@ F.lqm <- function(x, cn){
 
 xf <- floor(x)
 df <- x - xf
-val <- if(df < cn & x >= 1) xf - 0.5 + df/(2*cn)
-		else if(any(cn <= df & df < (1 - cn), x < 1)) xf
-			else if(df >= (1 - cn)) xf + 0.5 + (df - 1)/(2*cn)
+if(df < cn & x >= 1){
+	val <- xf - 0.5 + df/(2*cn)
+}
+if(any(cn <= df & df < (1 - cn), x < 1)){
+	val <- xf
+}
+
+if(df >= (1 - cn)){
+	val <- xf + 0.5 + (df - 1)/(2*cn)
+}
+
 return(val)
 }
 
-lqm.counts <- function (formula, data, weights = NULL, offset = NULL, contrasts = NULL, alpha = 0.5, 
-    M = 50, zeta = 1e-05, B = 0.999, cn = NULL) 
+lqm.counts <- function (formula, data, weights = NULL, offset = NULL, contrasts = NULL, tau = 0.5, M = 50, zeta = 1e-5, B = 0.999, cn = NULL, alpha = 0.05, control = list()) 
 {
-    nq <- length(alpha)
+    nq <- length(tau)
     if (nq > 1) 
         stop("One quantile at a time")
     
@@ -2010,39 +2049,54 @@ lqm.counts <- function (formula, data, weights = NULL, offset = NULL, contrasts 
     x <- model.matrix(mt, mf, contrasts)
     p <- ncol(x)
     n <- nrow(x)
-
+	term.labels <- colnames(x)
+	
     if (is.null(offset)) 
         offset <- rep(0, n)
-    control <- lqmControl()
+    if (is.null(names(control))) 
+        control <- lqmControl()
+    else {
+        control_default <- lqmControl()
+        control_names <- intersect(names(control), names(control_default))
+        control_default[control_names] <- control[control_names]
+        control <- control_default
+    }
     if (is.null(control$loop_step)) 
         control$loop_step <- sd(as.numeric(y))
-    if (p == 1) 
+    if (control$beta > 1 || control$beta < 0) 
+        stop("Beta must be a decreasing factor in (0,1)")
+    if (control$gamma < 1) 
+        stop("Beta must be a nondecreasing factor >= 1")
+	if (p == 1) 
         control$loop_tol_ll <- 0.005
-    theta <- glm.fit(x = as.matrix(x), y = y, weights = w, offset = offset, 
-        family = poisson())$coefficients
-    Z <- replicate(M, addnoise(y, centered = TRUE, B = B))
-    TZ <- apply(Z, 2, function(x, off, alpha, zeta) log(ifelse((x - 
-        alpha) > 0, x - alpha, zeta)) - off, off = offset, alpha = alpha, 
-        zeta = zeta)
-    fit <- apply(TZ, 2, function(y, x, weights, alpha, control, 
-        theta) lqm.fit.gs(theta = theta, x = x, y = y, weights = weights, 
-        iota = alpha, control = control), x = x, weights = w, 
-        alpha = alpha, control = control, theta = theta)
+    theta_0 <- glm.fit(x = as.matrix(x), y = y, weights = w, offset = offset, family = poisson())$coefficients
+    
+	# Add noise
+	Z <- replicate(M, addnoise(y, centered = FALSE, B = B))
+	# Transform Z
+    TZ <- apply(Z, 2, function(x, off, tau, zeta) log(ifelse((x - 
+        tau) > zeta, x - tau, zeta)) - off, off = offset, tau = tau, zeta = zeta)
+	# Fit linear QR on TZ
+    fit <- apply(TZ, 2, function(y, x, weights, tau, control, 
+        theta) lqm.fit.gs(theta = theta, x = x, y = y, weights = weights, tau = tau, control = control), x = x, weights = w, tau = tau, control = control, theta = theta_0)
+	# Trasform back
     yhat <- sapply(fit, function(obj, x) x %*% obj$theta, x = x)
-    eta <- yhat + offset
-    zhat <- alpha + exp(eta)
+	yhat <- as.matrix(yhat)
+    eta <- sweep(yhat, 1, offset, "+")
+    zhat <- tau + exp(eta)
+	#
     Fvec <- Vectorize(F.lqm)
     if(is.null(cn)) cn <- 0.5 * log(log(n))/sqrt(n)
     F <- apply(zhat, 2, Fvec, cn = cn)
     Fp <- apply(zhat + 1, 2, Fvec, cn = cn)
     
-    multiplier <- (alpha - (TZ <= eta))^2
+    multiplier <- (tau - (TZ <= yhat))^2
     a <- array(NA, dim = c(p, p, M))
     for (i in 1:M) a[, , i] <- t(x * multiplier[, i]) %*% x/n
     
-    multiplier <- alpha^2 + (1 - 2 * alpha) * (y <= (zhat - 1)) + 
+    multiplier <- tau^2 + (1 - 2 * tau) * (y <= (zhat - 1)) + 
         ((zhat - y) * (zhat - 1 < y & y <= zhat)) * (zhat - y - 
-            2 * alpha)
+            2 * tau)
     b <- array(NA, dim = c(p, p, M))
     for (i in 1:M) b[, , i] <- t(x * multiplier[, i]) %*% x/n
     
@@ -2053,8 +2107,8 @@ lqm.counts <- function (formula, data, weights = NULL, offset = NULL, contrasts 
         tmpInv <- try(solve(t(x * multiplier[, i]) %*% x/n), 
             silent = TRUE)
         if (class(tmpInv) != "try-error") 
-            d[, , i] <- tmpInv
-        else sel[i] <- FALSE
+            {d[, , i] <- tmpInv}
+        else {sel[i] <- FALSE}
     }
     
     dad <- 0
@@ -2066,27 +2120,121 @@ lqm.counts <- function (formula, data, weights = NULL, offset = NULL, contrasts 
     
 	m.n <- sum(sel)
     if (m.n != 0) {
-		val <- dad/(m.n^2) + (1 - 1/m.n) * dbd * 1/m.n
-		std <- sqrt(diag(val))}
-	else {
-		std <- NA
+		V <- dad/(m.n^2) + (1 - 1/m.n) * dbd * 1/m.n
+		V <- V/n
+		stds <- sqrt(diag(V))
+		} else {
+		stds <- NA
         warning("Standard error not available")
-    }
+		}
 
     est <- sapply(fit, function(x) x$theta)
-    est <- if (p == 1) 
-        mean(est)
-    else rowMeans(est)
+    est <- if (p == 1) mean(est) else rowMeans(est)
 
     qfit <- if (p == 1) {
-        alpha + exp(mean(eta[1, ]))
-    }
-    else {
-        alpha + exp(rowMeans(eta))
+        tau + exp(mean(eta[1, ]))
+    } else {
+        tau + exp(rowMeans(eta))
     }
 
-    return(list(estimate_log_scale = est, std.err = std, fitted = qfit, 
-        effective = m.n))
+	lower <- est + qt(alpha/2, n - p) * stds
+	upper <- est + qt(1 - alpha/2, n - p) * stds
+	tP <- 2 * pt(-abs(est/stds), n - p)
+
+	ans <- cbind(est, stds, lower, upper, tP)
+	colnames(ans) <- c("Value", "Std. Error", "lower bound", "upper bound", 
+        "Pr(>|t|)")
+	rownames(ans) <- names(est) <- term.labels
+	
+	fit <- list()
+	fit$call <- call
+	fit$na.action <- attr(mf, "na.action")
+	fit$contrasts <- attr(x, "contrasts")
+	fit$term.labels <- term.labels
+	fit$terms <- mt
+
+	fit$theta <- est
+	fit$tau <- tau
+	fit$nobs <- n
+	fit$M <- M
+	fit$Mn <- m.n
+	fit$rdf <- n - p
+	fit$x <- x
+	fit$y <- y
+	fit$fitted <- qfit
+	fit$offset <- offset
+	fit$Cov <- V
+	fit$tTable <- ans
+	fit$levels <- .getXlevels(mt, mf)
+	fit$InitialPar <- list(theta = theta_0)
+	fit$control <- control
+
+	class(fit) <- "lqm.counts"
+	
+    return(fit)
 }
+
+coef.lqm.counts <- function(object, ...){
+
+tau <- object$tau
+nq <- length(tau)
+ans <- object$theta
+
+if(nq == 1){
+  names(ans) <- object$term.labels
+}
+
+return(ans)
+
+}
+
+predict.lqm.counts <- function(object, newdata, na.action = na.pass, ...) 
+{
+
+tau <- object$tau
+
+	if(missing(newdata)){
+		yhat <- drop(object$x %*% object$theta)
+	}
+	else {
+		objt <- terms(object)
+		Terms <- delete.response(objt)
+		m <- model.frame(Terms, newdata, na.action = na.action, xlev = object$levels)
+		if (!is.null(cl <- attr(Terms, "dataClasses"))) .checkMFClasses(cl, m)
+		x <- model.matrix(Terms, m, contrasts.arg = object$contrasts)
+		yhat <- drop(x %*% object$theta)
+		
+	}
+
+return(yhat)
+}
+
+residuals.lqm.counts <- function(object, ...){
+
+ans <- as.numeric(object$y) - predict(object)
+return(ans)
+
+}
+
+
+print.lqm.counts <- function (x, digits = max(3, getOption("digits") - 3), ...) 
+{
+    tau <- x$tau
+    nq <- length(tau)
+    cat("Call: ")
+    dput(x$call)
+    cat("\n")
+    if (nq == 1) {
+        cat(paste("Quantile", tau, "\n"))
+        cat("\n")
+        cat("Fixed effects:\n")
+        printCoefmat(x$tTable, signif.stars = TRUE, P.values = TRUE)
+    }
+    else {
+    NULL
+	}
+}
+
+
 
 

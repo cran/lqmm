@@ -11,10 +11,10 @@ The Asymmetric Laplace Distribution
 Density, distribution function, quantile function and random generation for the asymmetric Laplace distribution.
 }
 \usage{
-dal(x, mu = 0, sigma = 1, p = 0.5, log = FALSE)
-pal(x, mu = 0, sigma = 1, p = 0.5)
-qal(x, mu = 0, sigma = 1, p = 0.5)
-ral(n, mu = 0, sigma = 1, p = 0.5)
+dal(x, mu = 0, sigma = 1, tau = 0.5, log = FALSE)
+pal(x, mu = 0, sigma = 1, tau = 0.5)
+qal(x, mu = 0, sigma = 1, tau = 0.5)
+ral(n, mu = 0, sigma = 1, tau = 0.5)
 }
 
 \arguments{
@@ -30,7 +30,7 @@ location parameter.
   \item{sigma}{
 positive scale parameter.
   }
-  \item{p}{
+  \item{tau}{
 skewness parameter (0,1).
  }
  \item{log}{

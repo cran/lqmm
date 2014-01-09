@@ -25,7 +25,7 @@ an object of class \code{list} containing the following components:
 
 \item{m}{location parameter}
 \item{sigma}{scale parameter}
-\item{p}{skewness parameter}
+\item{tau}{skewness parameter}
 \item{r}{number of iterations}
 }
 

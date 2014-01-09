@@ -10,7 +10,7 @@ A list of parameters for controlling the fitting process.
 \usage{
 lqmControl(loop_tol_ll = 1e-5, loop_tol_theta = 1e-5, check_theta = FALSE,
 	loop_step = NULL, beta = 0.5, gamma = 1, reset_step = FALSE,
-	loop_max_iter = 500, verbose = FALSE)
+	loop_max_iter = 1000, verbose = FALSE)
 }
 
 \arguments{

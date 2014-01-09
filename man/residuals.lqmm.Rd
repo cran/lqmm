@@ -45,4 +45,3 @@ Marco Geraci}
 }
 
 \keyword{residuals}
-\keyword{lqmm}

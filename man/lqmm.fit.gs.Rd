@@ -8,7 +8,7 @@ Linear Quantile Mixed Models Fitting by Gradient Search
 This function controls the arguments to be passed to routines written in C for LQMM estimation. The optimization algorithm is based on the gradient of the Laplace log--likelihood (Bottai, Orsini and Geraci, 2011; Geraci and Bottai, 2011).
 }
 \usage{
-lqmm.fit.gs(theta_0, x, y, z, weights, cov_name, V, W, sigma_0, iota,
+lqmm.fit.gs(theta_0, x, y, z, weights, cov_name, V, W, sigma_0, tau,
 	group, control)
 }
 
@@ -42,7 +42,7 @@ weights of the quadrature.
   \item{sigma_0}{
 starting value for the scale parameter.
   }
-  \item{iota}{
+  \item{tau}{
 the quantile(s) to be estimated.
 }
   \item{group}{
